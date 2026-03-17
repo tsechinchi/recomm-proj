@@ -14,8 +14,28 @@ conda install -c conda-forge scikit-surprise
 pip install -r requirements.txt
 
 ```
+## alternative -uv
+## Install uv
 
+First, install uv (a fast Python package manager):
+
+```bash
+# On macOS/Linux with brew
+brew install uv
+
+# Or install via pip
+pip install uv
+
+# Or download from https://github.com/astral-sh/uv
 ## Run the project
+# Sync dependencies from pyproject.toml
+uv sync
+
+# Activate the virtual environment
+source .venv/bin/activate  # On macOS/Linux
+# or
+.venv\Scripts\activate  # On Windows 
+
 ```
 flask --app flaskr run --debug
 ```
