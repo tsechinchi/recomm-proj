@@ -37,7 +37,7 @@ source .venv/bin/activate  # On macOS/Linux
 .venv\Scripts\activate  # On Windows 
 
 ```
-flask --app flaskr run --debug
+uv run flask --app flaskr run --debug # if you use non uv, remove uv run
 ```
 
 ## Add the recommendation algorithm
