@@ -30,8 +30,10 @@ def getRates():
     rootPath = os.path.abspath(os.getcwd())
     path = f"{rootPath}/flaskr/static/ml_data/ratings.csv"
     df = pd.read_csv(path, delimiter=",", header=0, names=["userId", "movieId", "rating", "timestamp"])
-    df = df.drop(columns='timestamp')
-    df = df[['userId', 'movieId', 'rating']]
+    # Convert epoch seconds to a datetime column so timeline-based loading/filters are possible
+    df['rated_at'] = pd.to_datetime(df['timestamp'], unit='s').strftime('%Y-%m-%d %H:%M:%S')
+    # Keep timestamp (epoch) and the converted datetime for flexibility
+    df = df[['userId', 'movieId', 'rating', 'timestamp', 'rated_at']]
 
     return df
 
