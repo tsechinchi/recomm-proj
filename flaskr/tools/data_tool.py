@@ -48,7 +48,7 @@ def ratesFromUser(rates):
         items = rate.split("|")
         userID.append(int(items[0]))
         itemID.append(int(items[1]))
-        rating.append(int(items[2]))
+        rating.append(float(items[2]))
 
     ratings_dict = {
         "userId": userID,
