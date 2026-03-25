@@ -422,7 +422,7 @@ requires-dist = [
     { name = "click", specifier = "==8.1.7" },
     { name = "cssselect", specifier = "==1.2.0" },
     { name = "flask", specifier = "==3.0.0" },
-    { name = "gensim", specifier = ">=4.4.0" },
+    { name = "gensim", specifier = "==4.4.0" },
     { name = "idna", specifier = "==3.6" },
     { name = "itsdangerous", specifier = "==2.1.2" },
     { name = "jinja2", specifier = "==3.1.2" },
