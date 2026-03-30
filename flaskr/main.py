@@ -1,10 +1,7 @@
-import re
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-import time
 
-import numpy as np
 import pandas as pd
 from flask import (
     Blueprint, current_app, jsonify, make_response, render_template, render_template_string, request
@@ -12,23 +9,17 @@ from flask import (
 
 from .tools.data_tool import *
 from . import recommender_original as original_system
-from .time_svdpp import TimeSVDppRecommender
-
-try:
-    from gensim.models import Word2Vec
-except ImportError:  # pragma: no cover - optional dependency
-    Word2Vec = None
-
-from sklearn.decomposition import TruncatedSVD
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+from .hybrid_support import (
+    DEFAULT_COLLABORATIVE_WEIGHT,
+    DEFAULT_SEMANTIC_WEIGHT,
+    get_hybrid_recommendation_results,
+    get_liked_similar_results,
+)
 
 bp = Blueprint('main', __name__, url_prefix='/')
 
-_MOVIE_EMBEDDING_CACHE = None
-_MOVIE_TIME_CACHE = None
-COLLABORATIVE_WEIGHT = 0.8
-SEMANTIC_WEIGHT = 0.2
+COLLABORATIVE_WEIGHT = DEFAULT_COLLABORATIVE_WEIGHT
+SEMANTIC_WEIGHT = DEFAULT_SEMANTIC_WEIGHT
 
 
 def main():
@@ -279,301 +270,27 @@ def getMoviesByGenres(user_genres):
 
 # Modify this function
 def getRecommendationBy(user_rates):
-    global movies, rates, _MOVIE_EMBEDDING_CACHE, _MOVIE_TIME_CACHE
     results = []
     if len(user_rates) > 0:
-        movies, _, rates = loadData()
-        _MOVIE_EMBEDDING_CACHE = None
-        _MOVIE_TIME_CACHE = None
-        user_rates = ratesFromUser(user_rates)
-        latest_timestamp = float(rates['timestamp'].max()) if len(rates) > 0 else float(time.time())
-        synthetic_timestamps = np.linspace(
-            latest_timestamp + 1.0,
-            latest_timestamp + float(len(user_rates)),
-            num=len(user_rates),
-            dtype=float,
+        results = get_hybrid_recommendation_results(
+            movies,
+            rates,
+            user_rates,
+            k=12,
+            collaborative_weight=COLLABORATIVE_WEIGHT,
+            semantic_weight=SEMANTIC_WEIGHT,
         )
-        user_rates = user_rates.copy(deep=True)
-        user_rates['timestamp'] = synthetic_timestamps
-        training_rates = pd.concat(
-            [rates[['userId', 'movieId', 'rating', 'timestamp']], user_rates[['userId', 'movieId', 'rating', 'timestamp']]],
-            ignore_index=True,
-        )
-        algo = TimeSVDppRecommender(
-            n_factors=80,
-            n_epochs=20,
-            lr_all=0.005,
-            reg_all=0.02,
-            temporal_epochs=8,
-            temporal_lr=0.003,
-            temporal_reg=0.02,
-            time_bin_days=30,
-            random_state=42,
-        )
-        algo.fit(training_rates)
-
-        user_id = int(user_rates['userId'].iloc[0])
-        rated_movie_ids = set(user_rates[user_rates['userId'] == user_id]['movieId'].tolist())
-        embedding_cache = _get_movie_embedding_cache()
-        movie_vectors = embedding_cache['vectors']
-        movie_id_to_index = embedding_cache['movie_id_to_index']
-        user_profile = _build_user_profile_from_ratings(user_rates, movie_vectors, movie_id_to_index)
-
-        candidate_movie_ids = []
-        for movie_id in movies['movieId'].tolist():
-            if movie_id in rated_movie_ids:
-                continue
-            candidate_movie_ids.append(movie_id)
-
-        if candidate_movie_ids:
-            reference_timestamp = float(user_rates['timestamp'].max())
-            collaborative_scores = algo.score_candidates(user_id, candidate_movie_ids, timestamp=reference_timestamp)
-            semantic_scores = []
-            for movie_id in candidate_movie_ids:
-                movie_index = movie_id_to_index.get(int(movie_id))
-                semantic_scores.append(
-                    0.0 if user_profile is None or movie_index is None else float(np.dot(user_profile, movie_vectors[movie_index]))
-                )
-            final_scores = (
-                COLLABORATIVE_WEIGHT * _minmax_scale(collaborative_scores)
-                + SEMANTIC_WEIGHT * _minmax_scale(semantic_scores)
-            )
-            result_frame = movies[movies['movieId'].isin(candidate_movie_ids)].copy(deep=True)
-            score_map = {
-                movie_id: score for movie_id, score in zip(candidate_movie_ids, final_scores)
-            }
-            result_frame['final_score'] = result_frame['movieId'].map(score_map)
-            results = result_frame.sort_values(by=['final_score'], ascending=False).head(12)
 
     if len(results) > 0:
         return results.to_dict('records'), "These movies are recommended by a TimeSVD++-style model that uses rating timestamps plus movie text features."  # type: ignore
     return results, "No recommendations."
 
 
-
 # Modify this function
 def getLikedSimilarBy(user_likes):
-    global movies, rates, _MOVIE_EMBEDDING_CACHE, _MOVIE_TIME_CACHE
     results = []
     if len(user_likes) > 0:
-        movies, _, rates = loadData()
-        _MOVIE_EMBEDDING_CACHE = None
-        _MOVIE_TIME_CACHE = None
-        embedding_cache = _get_movie_embedding_cache()
-        movie_vectors = embedding_cache['vectors']
-        movie_id_to_index = embedding_cache['movie_id_to_index']
-        liked_movie_ids = [int(movie_id) for movie_id in user_likes]
-        user_profile = _build_semantic_profile(liked_movie_ids, movie_vectors, movie_id_to_index)
-        if user_profile is not None:
-            results = _semantic_recommendation_results(
-                user_profile,
-                movie_vectors,
-                liked_movie_ids,
-                embedding_cache['movie_ids'],
-                12,
-            )
+        results = get_liked_similar_results(movies, user_likes, k=12)
     if len(results) > 0:
         return results.to_dict('records'), "The movies are similar to your liked movies based on semantic text embeddings." # type: ignore
     return results, "No similar movies found."
-
-
-# Step 1: Representing items with multi-hot vectors
-def item_representation_based_movie_genres(movies_df):
-    movies_with_genres = movies_df.copy(deep=True)
-    genre_list = []
-    for index, row in movies_df.iterrows():
-        for genre in row['genres']:
-            movies_with_genres.at[index, genre] = 1
-            if genre not in genre_list:
-                genre_list.append(genre)
-
-    movies_with_genres = movies_with_genres.fillna(0)
-
-    movies_genre_matrix = movies_with_genres[genre_list].to_numpy()
-    
-    return movies_genre_matrix, movies_with_genres, genre_list
-
-# Step 2: Building user profile
-def build_user_profile(movieIds, item_rep_vector, feature_list, weighted=True, normalized=True):
-    user_movie_rating_df = item_rep_vector[item_rep_vector['movieId'].isin(movieIds)]
-    user_movie_df = user_movie_rating_df[feature_list].mean()
-    user_profile = user_movie_df.T
-    
-    if normalized:
-        user_profile = user_profile / sum(user_profile.values)
-        
-    return user_profile
-# Step 3: Predicting user preference for items
-def generate_recommendation_results(user_profile,item_rep_matrix, movies_data, k=12):
-    u_v = user_profile.values
-    u_v_matrix =  [u_v]
-    recommendation_table =  cosine_similarity(u_v_matrix,item_rep_matrix) # type: ignore
-    recommendation_table_df = movies_data.copy(deep=True)
-    recommendation_table_df['similarity'] = recommendation_table[0]
-    rec_result = recommendation_table_df.sort_values(by=['similarity'], ascending=False)[:k]
-    return rec_result
-
-
-def _movie_text(row):
-    genres_text = ' '.join(row['genres']) if isinstance(row.get('genres'), list) else ''
-    overview = '' if pd.isna(row.get('overview')) else str(row.get('overview'))
-    title = '' if pd.isna(row.get('title')) else str(row.get('title'))
-    year = '' if pd.isna(row.get('year')) else str(row.get('year'))
-    return f"{title} {year} {genres_text} {overview}".strip().lower()
-
-
-def _tokenize(text):
-    return re.findall(r"[a-z0-9]+", text.lower())
-
-
-def _l2_normalize(matrix):
-    matrix = np.asarray(matrix, dtype=float)
-    if matrix.size == 0:
-        return matrix
-    norms = np.linalg.norm(matrix, axis=1, keepdims=True)
-    norms[norms == 0] = 1.0
-    return matrix / norms
-
-
-def _minmax_scale(values):
-    arr = np.asarray(values, dtype=float)
-    if arr.size == 0:
-        return arr
-    min_value = arr.min()
-    max_value = arr.max()
-    if np.isclose(min_value, max_value):
-        return np.zeros_like(arr)
-    return (arr - min_value) / (max_value - min_value)
-
-
-def _get_movie_embedding_cache():
-    global _MOVIE_EMBEDDING_CACHE
-    if _MOVIE_EMBEDDING_CACHE is not None:
-        return _MOVIE_EMBEDDING_CACHE
-
-    movie_frame = movies.copy(deep=True)
-    texts = movie_frame.apply(_movie_text, axis=1).tolist()
-
-    if Word2Vec is not None:
-        tokenized_texts = [_tokenize(text) for text in texts]
-        tokenized_texts = [tokens if tokens else ['movie'] for tokens in tokenized_texts]
-        model = Word2Vec(
-            sentences=tokenized_texts,
-            vector_size=100,
-            window=5,
-            min_count=1,
-            workers=1,
-            sg=1,
-            epochs=25,
-            seed=42,
-        )
-        vectors = []
-        for tokens in tokenized_texts:
-            token_vectors = [model.wv[token] for token in tokens if token in model.wv]
-            vectors.append(np.mean(token_vectors, axis=0) if token_vectors else np.zeros(model.vector_size))
-        vectors = np.asarray(vectors, dtype=float)
-    else:
-        vectorizer = TfidfVectorizer(stop_words='english', max_features=6000)
-        tfidf_matrix = vectorizer.fit_transform(texts)
-        if tfidf_matrix.shape[1] <= 2:
-            vectors = tfidf_matrix.toarray()
-        else:
-            n_components = min(100, tfidf_matrix.shape[0] - 1, tfidf_matrix.shape[1] - 1)
-            if n_components < 2:
-                vectors = tfidf_matrix.toarray()
-            else:
-                svd = TruncatedSVD(n_components=n_components, random_state=42)
-                vectors = svd.fit_transform(tfidf_matrix)
-
-    vectors = _l2_normalize(vectors)
-    movie_ids = movie_frame['movieId'].astype(int).tolist()
-    _MOVIE_EMBEDDING_CACHE = {
-        'movie_ids': movie_ids,
-        'vectors': vectors,
-        'movie_id_to_index': {movie_id: index for index, movie_id in enumerate(movie_ids)},
-    }
-    return _MOVIE_EMBEDDING_CACHE
-
-
-def _build_semantic_profile(movie_ids, movie_vectors, movie_id_to_index):
-    profile_vectors = []
-    weights = []
-    for movie_id in movie_ids:
-        index = movie_id_to_index.get(int(movie_id))
-        if index is None:
-            continue
-        profile_vectors.append(movie_vectors[index])
-        weights.append(1.0)
-
-    if not profile_vectors:
-        return None
-
-    weights = np.asarray(weights, dtype=float)
-    weights = weights / weights.sum()
-    profile = np.average(np.vstack(profile_vectors), axis=0, weights=weights)
-    norm = np.linalg.norm(profile)
-    if norm == 0:
-        return None
-    return profile / norm
-
-
-def _build_user_profile_from_ratings(user_rates_df, movie_vectors, movie_id_to_index):
-    rated_vectors = []
-    weights = []
-    for _, row in user_rates_df.iterrows():
-        movie_index = movie_id_to_index.get(int(row['movieId']))
-        if movie_index is None:
-            continue
-        rated_vectors.append(movie_vectors[movie_index])
-        weights.append(max(float(row['rating']), 0.5))
-
-    if not rated_vectors:
-        return None
-
-    weights = np.asarray(weights, dtype=float)
-    weights = weights / weights.sum()
-    profile = np.average(np.vstack(rated_vectors), axis=0, weights=weights)
-    norm = np.linalg.norm(profile)
-    if norm == 0:
-        return None
-    return profile / norm
-
-
-def _movie_semantic_similarity(user_rates_df, movie_id, movie_vectors, movie_id_to_index):
-    user_profile = _build_user_profile_from_ratings(user_rates_df, movie_vectors, movie_id_to_index)
-    if user_profile is None:
-        return 0.0
-    movie_index = movie_id_to_index.get(int(movie_id))
-    if movie_index is None:
-        return 0.0
-    return float(np.dot(user_profile, movie_vectors[movie_index]))
-
-
-def _semantic_recommendation_results(user_profile, movie_vectors, liked_movie_ids, movie_ids, k=12):
-    movie_ids = np.asarray(movie_ids, dtype=int)
-    scores = movie_vectors @ user_profile
-    mask = ~np.isin(movie_ids, np.asarray(liked_movie_ids, dtype=int))
-    filtered_movie_ids = movie_ids[mask]
-    filtered_scores = scores[mask]
-    ranking = np.argsort(filtered_scores)[::-1][:k]
-    ranked_movie_ids = filtered_movie_ids[ranking]
-    result_frame = movies[movies['movieId'].isin(ranked_movie_ids)].copy(deep=True)
-    score_map = {movie_id: score for movie_id, score in zip(filtered_movie_ids, filtered_scores)}
-    result_frame['similarity'] = result_frame['movieId'].map(score_map)
-    return result_frame.sort_values(by=['similarity'], ascending=False).head(k)
-
-
-def _get_movie_time_scores():
-    global _MOVIE_TIME_CACHE
-    if _MOVIE_TIME_CACHE is not None:
-        return _MOVIE_TIME_CACHE
-
-    movie_last_rating = rates.groupby('movieId')['timestamp'].max()
-    aligned = movie_last_rating.reindex(movies['movieId']).fillna(movie_last_rating.min())
-    min_value = float(movie_last_rating.min())
-    max_value = float(movie_last_rating.max())
-    if np.isclose(min_value, max_value):
-        _MOVIE_TIME_CACHE = np.zeros(len(movies), dtype=float)
-    else:
-        _MOVIE_TIME_CACHE = ((aligned.astype(float) - min_value) / (max_value - min_value)).to_numpy(dtype=float)
-    return _MOVIE_TIME_CACHE

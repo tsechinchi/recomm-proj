@@ -11,10 +11,10 @@ SECONDS_PER_DAY = 86400.0
 class TimeSVDppRecommender:
     def __init__(
         self,
-        n_factors=80,
-        n_epochs=20,
+        n_factors=50,
+        n_epochs=30,
         lr_all=0.005,
-        reg_all=0.02,
+        reg_all=0.05,
         temporal_epochs=8,
         temporal_lr=0.003,
         temporal_reg=0.02,

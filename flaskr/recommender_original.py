@@ -241,11 +241,11 @@ def _get_movie_embedding_cache():
         vectorizer = TfidfVectorizer(stop_words='english', max_features=6000)
         tfidf_matrix = vectorizer.fit_transform(texts)
         if tfidf_matrix.shape[1] <= 2:
-            vectors = tfidf_matrix.toarray()
+            vectors = tfidf_matrix.toarray() #type: ignore
         else:
             n_components = min(100, tfidf_matrix.shape[0] - 1, tfidf_matrix.shape[1] - 1)
             if n_components < 2:
-                vectors = tfidf_matrix.toarray()
+                vectors = tfidf_matrix.toarray() #type: ignore
             else:
                 svd = TruncatedSVD(n_components=n_components, random_state=42)
                 vectors = svd.fit_transform(tfidf_matrix)
