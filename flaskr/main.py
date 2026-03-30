@@ -2,6 +2,7 @@ import re
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+import time
 
 import numpy as np
 import pandas as pd
@@ -10,16 +11,14 @@ from flask import (
 )
 
 from .tools.data_tool import *
-from . import recommender_original_5c65775 as original_system
+from . import recommender_original as original_system
+from .time_svdpp import TimeSVDppRecommender
 
 try:
     from gensim.models import Word2Vec
 except ImportError:  # pragma: no cover - optional dependency
     Word2Vec = None
 
-from surprise import Dataset
-from surprise import Reader
-from surprise import SVDpp
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
@@ -28,6 +27,8 @@ bp = Blueprint('main', __name__, url_prefix='/')
 
 _MOVIE_EMBEDDING_CACHE = None
 _MOVIE_TIME_CACHE = None
+COLLABORATIVE_WEIGHT = 0.8
+SEMANTIC_WEIGHT = 0.2
 
 
 def main():
@@ -284,58 +285,68 @@ def getRecommendationBy(user_rates):
         movies, _, rates = loadData()
         _MOVIE_EMBEDDING_CACHE = None
         _MOVIE_TIME_CACHE = None
-        reader = Reader(rating_scale=(0.5, 5.0))
-        algo = SVDpp(
+        user_rates = ratesFromUser(user_rates)
+        latest_timestamp = float(rates['timestamp'].max()) if len(rates) > 0 else float(time.time())
+        synthetic_timestamps = np.linspace(
+            latest_timestamp + 1.0,
+            latest_timestamp + float(len(user_rates)),
+            num=len(user_rates),
+            dtype=float,
+        )
+        user_rates = user_rates.copy(deep=True)
+        user_rates['timestamp'] = synthetic_timestamps
+        training_rates = pd.concat(
+            [rates[['userId', 'movieId', 'rating', 'timestamp']], user_rates[['userId', 'movieId', 'rating', 'timestamp']]],
+            ignore_index=True,
+        )
+        algo = TimeSVDppRecommender(
             n_factors=80,
             n_epochs=20,
             lr_all=0.005,
             reg_all=0.02,
+            temporal_epochs=8,
+            temporal_lr=0.003,
+            temporal_reg=0.02,
+            time_bin_days=30,
             random_state=42,
         )
-        user_rates = ratesFromUser(user_rates)
-        training_rates = pd.concat([rates[['userId', 'movieId', 'rating']], user_rates], ignore_index=True)
-        training_data = Dataset.load_from_df(training_rates, reader=reader)
-        trainset = training_data.build_full_trainset()
-        algo.fit(trainset)
+        algo.fit(training_rates)
 
         user_id = int(user_rates['userId'].iloc[0])
         rated_movie_ids = set(user_rates[user_rates['userId'] == user_id]['movieId'].tolist())
-
         embedding_cache = _get_movie_embedding_cache()
         movie_vectors = embedding_cache['vectors']
         movie_id_to_index = embedding_cache['movie_id_to_index']
-        time_scores = _get_movie_time_scores()
         user_profile = _build_user_profile_from_ratings(user_rates, movie_vectors, movie_id_to_index)
 
         candidate_movie_ids = []
-        cf_scores = []
-        semantic_scores = []
-
         for movie_id in movies['movieId'].tolist():
             if movie_id in rated_movie_ids:
                 continue
             candidate_movie_ids.append(movie_id)
-            cf_scores.append(algo.predict(user_id, movie_id).est)
-            movie_index = movie_id_to_index.get(movie_id)
-            semantic_scores.append(0.0 if user_profile is None or movie_index is None else float(np.dot(user_profile, movie_vectors[movie_index])))
 
         if candidate_movie_ids:
-            candidate_indices = [movie_id_to_index[movie_id] for movie_id in candidate_movie_ids]
-            time_candidate_scores = time_scores[candidate_indices]
-            cf_scores = _minmax_scale(cf_scores)
-            semantic_scores = _minmax_scale(semantic_scores)
-            time_candidate_scores = _minmax_scale(time_candidate_scores)
-
-            result_frame = movies[movies['movieId'].isin(candidate_movie_ids)].copy(deep=True)
-            result_frame['final_score'] = (
-                0.65 * cf_scores
-                + 0.25 * semantic_scores
-                + 0.10 * time_candidate_scores
+            reference_timestamp = float(user_rates['timestamp'].max())
+            collaborative_scores = algo.score_candidates(user_id, candidate_movie_ids, timestamp=reference_timestamp)
+            semantic_scores = []
+            for movie_id in candidate_movie_ids:
+                movie_index = movie_id_to_index.get(int(movie_id))
+                semantic_scores.append(
+                    0.0 if user_profile is None or movie_index is None else float(np.dot(user_profile, movie_vectors[movie_index]))
+                )
+            final_scores = (
+                COLLABORATIVE_WEIGHT * _minmax_scale(collaborative_scores)
+                + SEMANTIC_WEIGHT * _minmax_scale(semantic_scores)
             )
+            result_frame = movies[movies['movieId'].isin(candidate_movie_ids)].copy(deep=True)
+            score_map = {
+                movie_id: score for movie_id, score in zip(candidate_movie_ids, final_scores)
+            }
+            result_frame['final_score'] = result_frame['movieId'].map(score_map)
             results = result_frame.sort_values(by=['final_score'], ascending=False).head(12)
 
     if len(results) > 0:
-        return results.to_dict('records'), "These movies are recommended by an SVD++ + semantic + time-aware hybrid."  # type: ignore
+        return results.to_dict('records'), "These movies are recommended by a TimeSVD++-style model that uses rating timestamps plus movie text features."  # type: ignore
     return results, "No recommendations."
 
 
