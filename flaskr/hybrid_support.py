@@ -20,10 +20,6 @@ DEFAULT_COLLABORATIVE_WEIGHT = 0.85
 # complementary to the collaborative weight; both weights can be tuned.
 DEFAULT_SEMANTIC_WEIGHT = 0.15
 
-# Penalty factor applied to item popularity (higher reduces scores for
-# more popular items). This is subtracted from the final score.
-DEFAULT_POPULARITY_PENALTY = 0.05
-
 # Default parameters passed to the TimeSVDpp recommender. Keys:
 # - "n_factors": number of latent factors
 # - "n_epochs": number of training epochs
@@ -96,20 +92,6 @@ def minmax_scale(values):
     if np.isclose(min_value, max_value):
         return np.zeros_like(arr)
     return (arr - min_value) / (max_value - min_value)
-
-
-def build_popularity_lookup(ratings_df):
-    if len(ratings_df) == 0:
-        return {}
-
-    popularity = ratings_df.groupby("movieId")["rating"].count().astype(float)
-    max_count = float(popularity.max())
-    if np.isclose(max_count, 0.0):
-        return {int(movie_id): 0.0 for movie_id in popularity.index}
-    return {
-        int(movie_id): float(count / max_count)
-        for movie_id, count in popularity.items()
-    }
 
 
 def build_movie_embeddings(movies):
@@ -270,10 +252,8 @@ def score_hybrid_candidates(
     reference_timestamp,
     movie_vectors,
     movie_id_to_index,
-    popularity_lookup=None,
     collaborative_weight=DEFAULT_COLLABORATIVE_WEIGHT,
     semantic_weight=DEFAULT_SEMANTIC_WEIGHT,
-    popularity_penalty=DEFAULT_POPULARITY_PENALTY,
 ):
     collaborative_scores = model.score_candidates(
         int(user_history["userId"].iloc[0]),
@@ -288,18 +268,9 @@ def score_hybrid_candidates(
             0.0 if user_profile is None or movie_index is None else float(np.dot(user_profile, movie_vectors[movie_index]))
         )
 
-    popularity_scores = np.asarray(
-        [
-            0.0 if popularity_lookup is None else popularity_lookup.get(int(movie_id), 0.0)
-            for movie_id in candidate_movie_ids
-        ],
-        dtype=float,
-    )
-
     return (
         collaborative_weight * minmax_scale(collaborative_scores)
         + semantic_weight * minmax_scale(semantic_scores)
-        - popularity_penalty * popularity_scores
     )
 
 
@@ -320,7 +291,6 @@ def get_hybrid_recommendation_results(
     rated_movie_ids = set(user_rates_df["movieId"].tolist())
 
     embedding_cache = get_movie_embedding_cache(movies_df)
-    popularity_lookup = build_popularity_lookup(ratings_df)
     candidate_movie_ids = [
         movie_id for movie_id in movies_df["movieId"].tolist() if movie_id not in rated_movie_ids
     ]
@@ -335,7 +305,6 @@ def get_hybrid_recommendation_results(
         reference_timestamp,
         embedding_cache["vectors"],
         embedding_cache["movie_id_to_index"],
-        popularity_lookup=popularity_lookup,
         collaborative_weight=collaborative_weight,
         semantic_weight=semantic_weight,
     )

@@ -8,7 +8,6 @@ from flaskr.hybrid_support import (
     MODEL_CONFIG,
     TUNING_WEIGHT_GRID,
     build_movie_embeddings,
-    build_popularity_lookup,
     score_hybrid_candidates,
     sample_validation_users,
 )
@@ -82,7 +81,6 @@ def build_rankings(
     all_movie_ids,
     movie_vectors,
     movie_id_to_index,
-    popularity_lookup,
     collaborative_weight,
 ):
     recommendation_lists = []
@@ -100,7 +98,6 @@ def build_rankings(
             user["reference_timestamp"],
             movie_vectors,
             movie_id_to_index,
-            popularity_lookup=popularity_lookup,
             collaborative_weight=collaborative_weight,
             semantic_weight=semantic_weight,
         )
@@ -117,7 +114,6 @@ def tune_fusion_weight(
     all_movie_ids,
     movie_vectors,
     movie_id_to_index,
-    popularity_lookup,
 ):
     sampled_validation_users = sample_validation_users(validation_users)
     best_weight = None
@@ -130,7 +126,6 @@ def tune_fusion_weight(
             all_movie_ids,
             movie_vectors,
             movie_id_to_index,
-            popularity_lookup,
             collaborative_weight,
         )
         metrics = evaluate_ranking_batch(recommendation_lists, relevant_lists, k=TOP_K)
@@ -151,7 +146,6 @@ def run_evaluation():
     all_movie_ids = movies["movieId"].astype(int).tolist()
     movie_vectors = build_movie_embeddings(movies)
     movie_id_to_index = {int(movie_id): index for index, movie_id in enumerate(all_movie_ids)}
-    popularity_lookup = build_popularity_lookup(train_ratings)
 
     best_weight, validation_metrics, sampled_validation_count = tune_fusion_weight(
         model,
@@ -159,7 +153,6 @@ def run_evaluation():
         all_movie_ids,
         movie_vectors,
         movie_id_to_index,
-        popularity_lookup,
     )
     recommendation_lists, relevant_lists = build_rankings(
         model,
@@ -167,7 +160,6 @@ def run_evaluation():
         all_movie_ids,
         movie_vectors,
         movie_id_to_index,
-        popularity_lookup,
         best_weight,
     )
     metrics = evaluate_ranking_batch(recommendation_lists, relevant_lists, k=TOP_K)
@@ -175,7 +167,7 @@ def run_evaluation():
     return {
         "users_evaluated": len(test_users),
         "split": "temporal train/validation/test split (last 2 positive interactions per eligible user)",
-        "model": "TimeSVD++-style recommender with movie text embeddings and popularity penalty",
+        "model": "TimeSVD++-style recommender with movie text embeddings",
         "tuned_weights": {
             "collaborative": best_weight,
             "semantic": round(1.0 - best_weight, 2),
