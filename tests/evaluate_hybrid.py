@@ -1,27 +1,25 @@
 import json
 import re
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from surprise import Dataset
-from surprise import Reader
-from surprise import SVDpp
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
+
+from flaskr.evaluation import evaluate_ranking_batch
+from flaskr.time_svdpp import TimeSVDppRecommender
+from flaskr.tools.data_tool import loadData
 
 try:
     from gensim.models import Word2Vec
 except ImportError:  # pragma: no cover - optional dependency
     Word2Vec = None
 
-from flaskr.evaluation import evaluate_ranking_batch
-from flaskr.tools.data_tool import loadData
-
 
 TOP_K = 20
 MIN_USER_HISTORY = 5
 POSITIVE_RATING = 4.0
+WEIGHT_GRID = [round(weight, 2) for weight in np.linspace(0.0, 1.0, 11)]
 
 
 def movie_text(row):
@@ -107,41 +105,52 @@ def build_user_profile(user_history, movie_vectors, movie_id_to_index):
     return profile / norm
 
 
-def build_time_prior(train_ratings, movies):
-    movie_last_rating = train_ratings.groupby("movieId")["timestamp"].max()
-    aligned = movie_last_rating.reindex(movies["movieId"]).fillna(movie_last_rating.min())
-    min_value = float(movie_last_rating.min())
-    max_value = float(movie_last_rating.max())
-    if np.isclose(min_value, max_value):
-        return np.zeros(len(movies), dtype=float)
-    return ((aligned.astype(float) - min_value) / (max_value - min_value)).to_numpy(dtype=float)
-
-
-def temporal_holdout_split(ratings):
+def temporal_validation_test_split(ratings):
     train_parts = []
-    eval_users = []
+    validation_users = []
+    test_users = []
 
-    for user_id, user_frame in ratings.sort_values(["userId", "timestamp"]).groupby("userId"):
+    ordered_ratings = ratings.sort_values(["userId", "timestamp"])
+    for user_id, user_frame in ordered_ratings.groupby("userId"):
         if len(user_frame) < MIN_USER_HISTORY:
             continue
 
         positives = user_frame[user_frame["rating"] >= POSITIVE_RATING]
-        if positives.empty:
+        if len(positives) < 2:
             continue
 
-        held_out = positives.sort_values("timestamp").tail(1)
-        held_out_movie_id = int(held_out.iloc[0]["movieId"])
+        validation_row = positives.tail(2).head(1)
+        test_row = positives.tail(1)
+        validation_movie_id = int(validation_row.iloc[0]["movieId"])
+        validation_timestamp = float(validation_row.iloc[0]["timestamp"])
+        test_movie_id = int(test_row.iloc[0]["movieId"])
+        test_timestamp = float(test_row.iloc[0]["timestamp"])
 
-        train_frame = user_frame[user_frame["movieId"] != held_out_movie_id]
+        held_out_movie_ids = {validation_movie_id, test_movie_id}
+        train_frame = user_frame[~user_frame["movieId"].isin(held_out_movie_ids)]
         if len(train_frame) < MIN_USER_HISTORY - 1:
             continue
 
         train_parts.append(train_frame)
-        eval_users.append(
+        validation_users.append(
             {
                 "user_id": int(user_id),
+                "seen_movie_ids": set(train_frame["movieId"].astype(int).tolist()),
+                "reference_timestamp": validation_timestamp,
                 "train_history": train_frame,
-                "relevant_items": [held_out_movie_id],
+                "relevant_items": [validation_movie_id],
+            }
+        )
+        validation_seen = set(train_frame["movieId"].astype(int).tolist())
+        validation_seen.add(validation_movie_id)
+        test_history = pd.concat([train_frame, validation_row], ignore_index=True)
+        test_users.append(
+            {
+                "user_id": int(user_id),
+                "seen_movie_ids": validation_seen,
+                "reference_timestamp": test_timestamp,
+                "train_history": test_history,
+                "relevant_items": [test_movie_id],
             }
         )
 
@@ -149,82 +158,120 @@ def temporal_holdout_split(ratings):
         raise RuntimeError("No eligible users found for temporal evaluation.")
 
     train_ratings = pd.concat(train_parts, ignore_index=True)
-    return train_ratings, eval_users
+    return train_ratings, validation_users, test_users
 
 
-def recommend_for_user(user_id, user_history, train_ratings, movies, movie_vectors, movie_id_to_index, time_prior):
-    reader = Reader(rating_scale=(0.5, 5.0))
-    train_df = train_ratings[["userId", "movieId", "rating"]]
-    surprise_data = Dataset.load_from_df(train_df, reader=reader)
-    algo = SVDpp(
-        n_factors=80,
-        n_epochs=20,
-        lr_all=0.005,
-        reg_all=0.02,
-        random_state=42,
-    )
-    algo.fit(surprise_data.build_full_trainset())
+def build_rankings(model, user_groups, all_movie_ids, movie_vectors, movie_id_to_index, collaborative_weight):
+    recommendation_lists = []
+    relevant_lists = []
+    semantic_weight = 1.0 - collaborative_weight
 
-    seen_movie_ids = set(user_history["movieId"].astype(int).tolist())
-    user_profile = build_user_profile(user_history, movie_vectors, movie_id_to_index)
-
-    candidate_movie_ids = []
-    collaborative_scores = []
-    semantic_scores = []
-
-    for movie_id in movies["movieId"].astype(int).tolist():
-        if movie_id in seen_movie_ids:
-            continue
-        candidate_movie_ids.append(movie_id)
-        collaborative_scores.append(algo.predict(user_id, movie_id).est)
-        movie_index = movie_id_to_index.get(movie_id)
-        semantic_scores.append(
-            0.0 if user_profile is None or movie_index is None else float(np.dot(user_profile, movie_vectors[movie_index]))
+    for user in user_groups:
+        candidate_movie_ids = [
+            movie_id for movie_id in all_movie_ids if movie_id not in user["seen_movie_ids"]
+        ]
+        collaborative_scores = model.score_candidates(
+            user["user_id"],
+            candidate_movie_ids,
+            timestamp=user["reference_timestamp"],
         )
+        user_profile = build_user_profile(
+            user["train_history"],
+            movie_vectors,
+            movie_id_to_index,
+        )
+        semantic_scores = []
+        for movie_id in candidate_movie_ids:
+            movie_index = movie_id_to_index.get(movie_id)
+            semantic_scores.append(
+                0.0 if user_profile is None or movie_index is None else float(np.dot(user_profile, movie_vectors[movie_index]))
+            )
+        final_scores = (
+            collaborative_weight * minmax_scale(collaborative_scores)
+            + semantic_weight * minmax_scale(semantic_scores)
+        )
+        ranking = np.argsort(final_scores)[::-1][:TOP_K]
+        recommendation_lists.append(
+            [candidate_movie_ids[index] for index in ranking]
+        )
+        relevant_lists.append(user["relevant_items"])
 
-    candidate_indices = [movie_id_to_index[movie_id] for movie_id in candidate_movie_ids]
-    time_scores = time_prior[candidate_indices]
+    return recommendation_lists, relevant_lists
 
-    final_scores = (
-        0.65 * minmax_scale(collaborative_scores)
-        + 0.25 * minmax_scale(semantic_scores)
-        + 0.10 * minmax_scale(time_scores)
-    )
 
-    ranked_indices = np.argsort(final_scores)[::-1][:TOP_K]
-    return [candidate_movie_ids[index] for index in ranked_indices]
+def tune_fusion_weight(model, validation_users, all_movie_ids, movie_vectors, movie_id_to_index):
+    best_weight = None
+    best_metrics = None
+
+    for collaborative_weight in WEIGHT_GRID:
+        recommendation_lists, relevant_lists = build_rankings(
+            model,
+            validation_users,
+            all_movie_ids,
+            movie_vectors,
+            movie_id_to_index,
+            collaborative_weight,
+        )
+        metrics = evaluate_ranking_batch(recommendation_lists, relevant_lists, k=TOP_K)
+        if best_metrics is None or metrics["ndcg@20"] > best_metrics["ndcg@20"]:
+            best_weight = collaborative_weight
+            best_metrics = metrics
+
+    return best_weight, best_metrics
 
 
 def run_evaluation():
     movies, _, ratings = loadData()
-    train_ratings, eval_users = temporal_holdout_split(ratings)
+    train_ratings, validation_users, test_users = temporal_validation_test_split(ratings)
 
+    model = TimeSVDppRecommender(
+        n_factors=80,
+        n_epochs=20,
+        lr_all=0.005,
+        reg_all=0.02,
+        temporal_epochs=8,
+        temporal_lr=0.003,
+        temporal_reg=0.02,
+        time_bin_days=30,
+        random_state=42,
+    )
+    model.fit(train_ratings[["userId", "movieId", "rating", "timestamp"]])
+
+    all_movie_ids = movies["movieId"].astype(int).tolist()
     movie_vectors = build_movie_embeddings(movies)
-    movie_id_to_index = {int(movie_id): index for index, movie_id in enumerate(movies["movieId"].astype(int).tolist())}
-    time_prior = build_time_prior(train_ratings, movies)
-
-    recommendation_lists = []
-    relevant_lists = []
-
-    for user in eval_users:
-        recommendation_lists.append(
-            recommend_for_user(
-                user["user_id"],
-                user["train_history"],
-                train_ratings,
-                movies,
-                movie_vectors,
-                movie_id_to_index,
-                time_prior,
-            )
-        )
-        relevant_lists.append(user["relevant_items"])
-
+    movie_id_to_index = {
+        int(movie_id): index for index, movie_id in enumerate(all_movie_ids)
+    }
+    best_weight, validation_metrics = tune_fusion_weight(
+        model,
+        validation_users,
+        all_movie_ids,
+        movie_vectors,
+        movie_id_to_index,
+    )
+    recommendation_lists, relevant_lists = build_rankings(
+        model,
+        test_users,
+        all_movie_ids,
+        movie_vectors,
+        movie_id_to_index,
+        best_weight,
+    )
     metrics = evaluate_ranking_batch(recommendation_lists, relevant_lists, k=TOP_K)
-    summary = {
-        "users_evaluated": len(eval_users),
-        "split": "temporal holdout (last positive interaction per eligible user)",
-        "model": "SVD++ + Word2Vec/TF-IDF semantic embeddings + time-aware reranking",
+    return {
+        "users_evaluated": len(test_users),
+        "split": "temporal train/validation/test split (last 2 positive interactions per eligible user)",
+        "model": "TimeSVD++-style recommender with movie text embeddings",
+        "tuned_weights": {
+            "collaborative": best_weight,
+            "semantic": round(1.0 - best_weight, 2),
+        },
+        "validation_metrics": {
+            "ndcg@20": validation_metrics["ndcg@20"],
+            "map@20": validation_metrics["map@20"],
+            "recall@20": validation_metrics["recall@20"],
+            "hit_rate@20": validation_metrics["hit_rate@20"],
+        },
         "metrics": {
             "ndcg@20": metrics["ndcg@20"],
             "map@20": metrics["map@20"],
@@ -232,7 +279,6 @@ def run_evaluation():
             "hit_rate@20": metrics["hit_rate@20"],
         },
     }
-    return summary
 
 
 if __name__ == "__main__":
