@@ -53,7 +53,7 @@
             <nav :class="['navbar', 'is-active', {% if ui_variant == 'v2' %}'bg-cyberBlack border-b border-neonPink shadow-[0_5px_20px_rgba(255,0,160,0.3)]'{% endif %}]" role="navigation" aria-label="main navigation">
                 <div class="navbar-brand">
                     <a class="navbar-item" href="/">
-                        <span class="is-size-3 {% if ui_variant == 'v2' %}font-display font-bold text-neonCyan tracking-[0.2em] uppercase cyber-glitch{% endif %}">{% if ui_variant == 'v2' %}NEURAL_LINK>__{% else %}Movies Recommender System{% endif %}</span>
+                        <span class="is-size-3 {% if ui_variant == 'v2' %}font-display font-bold text-neonCyan tracking-[0.2em] uppercase cyber-glitch{% endif %}">{% if ui_variant == 'v2' %}Neon Recommender{% else %}Movies Recommender System{% endif %}</span>
                     </a>
 
                     <a role="button" :class="['navbar-burger', isActivityNavBar ? 'is-active' : '']" aria-label="menu"
@@ -73,7 +73,7 @@
                             <div class="buttons">
                                 {% if ui_variant == 'v2' %}
                                 <a class="button {% if ui_variant == 'v2' %}bg-transparent border border-neonCyan text-neonCyan hover:bg-neonCyan hover:text-black font-body uppercase tracking-wider{% else %}is-warning is-light{% endif %}" href="/?variant={{ ab_variant }}{% if participant_id %}&participant_id={{ participant_id }}{% endif %}&ui=classic">
-                                    <strong>REVERT UI</strong>
+                                    <strong>ORIGINAL UI</strong>
                                 </a>
                                 {% else %}
                                 <a class="button is-primary is-light" href="/?variant={{ ab_variant }}{% if participant_id %}&participant_id={{ participant_id }}{% endif %}&ui=v2">
@@ -82,11 +82,11 @@
                                 {% endif %}
 
                                 <button class="button {% if ui_variant == 'v2' %}bg-transparent border border-neonPink text-neonPink hover:bg-neonPink hover:text-black font-body uppercase tracking-wider{% else %}is-danger{% endif %}" @click="cleanAll">
-                                    <strong>PURGE DATA</strong>
+                                    <strong>{% if ui_variant == 'v2' %}CLEAR DATA{% else %}Clean All{% endif %}</strong>
                                 </button>
 
                                 <button class="button {% if ui_variant == 'v2' %}bg-neonGreen border-0 text-black shadow-[0_0_15px_rgba(0,255,63,0.8)] hover:bg-white font-body uppercase tracking-wider font-bold{% else %}is-link{% endif %}" @click="showGenres = true">
-                                    <strong>SELECT.NODES()</strong>
+                                    <strong>{% if ui_variant == 'v2' %}SELECT GENRES{% else %}Genres{% endif %}</strong>
                                 </button>
                             </div>
                         </div>
@@ -102,29 +102,29 @@
                     <div class="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(0,240,255,0.2),transparent_70%)] animate-pulse"></div>
                     <div class="grid gap-6 lg:grid-cols-[1.5fr_1fr] skew-x-[2deg]">
                     <div>
-                        <p class="font-display text-sm font-bold uppercase tracking-[0.3em] text-neonGreen">SYS.ALG: {{ ab_variant }} // NEON OVERRIDE</p>
-                        <h1 class="font-display text-4xl font-bold uppercase leading-[1.1] text-white lg:text-6xl cyber-glitch">Decode<br/>The Matrix</h1>
-                        <p class="mt-4 max-w-[62ch] text-[1.1rem] text-neonCyan opacity-80 border-l-2 border-neonPink pl-3">Genre arrays initialize candidate space. Rating logs construct temporal profiles. Like vectors enable semantic routing.</p>
+                        <p class="font-display text-sm font-bold uppercase tracking-[0.3em] text-neonGreen">Algorithm: {{ ab_variant }} // Neon Theme</p>
+                        <h1 class="font-display text-4xl font-bold uppercase leading-[1.1] text-white lg:text-6xl cyber-glitch">Discover<br/>Great Movies</h1>
+                        <p class="mt-4 max-w-[62ch] text-[1.1rem] text-neonCyan opacity-80 border-l-2 border-neonPink pl-3">Choosing genres sets your baseline. Rating logs build your profile. Liked movies enable advanced semantic matching.</p>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
                             <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Gen.Nodes</p>
+                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Genres</p>
                             <strong class="text-3xl text-neonPink">{{ feedback_state['genres_count'] }}</strong>
                         </article>
                         <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
                             <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Rat.Logs</p>
+                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Ratings</p>
                             <strong class="text-3xl text-neonPink">[[ userRates.length ]]</strong>
                         </article>
                         <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
                             <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">L.Vectors</p>
+                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Likes</p>
                             <strong class="text-3xl text-neonPink">[[ userLikes.length ]]</strong>
                         </article>
                         <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
                             <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Mem.Blend</p>
+                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Blend Ratio</p>
                             <strong class="text-3xl text-neonPink">{{ "%.0f"|format(collaborative_weight * 100) }}/{{ "%.0f"|format(semantic_weight * 100) }}</strong>
                         </article>
                     </div>
@@ -133,24 +133,24 @@
 
                 <div class="mt-6 grid gap-4 md:grid-cols-3">
                     <article class="border border-gray-700 bg-cyberGray p-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-neonGreen transition-colors">
-                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Phase.01</p>
-                        <h3 class="font-display text-xl text-white uppercase">Initialize Lens</h3>
-                        <p class="text-sm text-gray-400 mt-2">Selected core genres collapse the infinite probability wave.</p>
+                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Step 1</p>
+                        <h3 class="font-display text-xl text-white uppercase">Choose Genres</h3>
+                        <p class="text-sm text-gray-400 mt-2">Selecting core genres narrows down the overall movie recommendations.</p>
                     </article>
                     <article class="border border-gray-700 bg-cyberGray p-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-neonGreen transition-colors">
-                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Phase.02</p>
-                        <h3 class="font-display text-xl text-white uppercase">Sync Memory</h3>
-                        <p class="text-sm text-gray-400 mt-2">Chronological rating injections train your neural preference net.</p>
+                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Step 2</p>
+                        <h3 class="font-display text-xl text-white uppercase">Rate Movies</h3>
+                        <p class="text-sm text-gray-400 mt-2">Rating movies helps the timeline-aware collaborative model learn your taste.</p>
                     </article>
                     <article class="border border-gray-700 bg-cyberGray p-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-neonGreen transition-colors">
-                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Phase.03</p>
-                        <h3 class="font-display text-xl text-white uppercase">Engage Boost</h3>
-                        <p class="text-sm text-gray-400 mt-2">Positive interactions supercharge nearby entity vectors.</p>
+                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Step 3</p>
+                        <h3 class="font-display text-xl text-white uppercase">Like Movies</h3>
+                        <p class="text-sm text-gray-400 mt-2">Liking titles fine-tunes your recommendations pulling in similar semantic matches.</p>
                     </article>
                 </div>
 
                 <div class="mt-6 border-l-4 border-neonPink bg-cyberGray p-4" v-if="{{ feedback_state['selected_genres']|length }} > 0">
-                    <p class="font-display text-sm font-bold uppercase tracking-[0.2em] text-white">Active Node Filters</p>
+                    <p class="font-display text-sm font-bold uppercase tracking-[0.2em] text-white">Active Genres</p>
                     <div class="mt-3 flex flex-wrap gap-3">
                         {% for genre_name in feedback_state['selected_genres'] %}
                         <span class="border border-neonCyan bg-cyberBlack px-4 py-1 text-sm font-bold uppercase tracking-[0.1em] text-neonCyan shadow-[0_0_5px_rgba(0,240,255,0.5)]">{{ genre_name }}</span>
@@ -166,7 +166,7 @@
             <section class="section pt-2 pb-0 {% if ui_variant == 'v2' %}cyber-recommend-section{% endif %}">
                 <div class="container">
                     <p class="is-size-4 {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-white text-2xl font-bold{% endif %}">
-                        TARGET DETECTED
+                        {% if ui_variant == 'v2' %}RECOMMENDED MOVIES{% else %}Recommended{% endif %}
                     </p>
                     <p class="mb-5 {% if ui_variant == 'v2' %}text-neonCyan border-l-2 border-neonCyan pl-3 text-sm{% endif %}">{{ recommendations_message }}</p>
 
@@ -204,7 +204,7 @@
 
                                 <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonPink flex justify-between items-center{% endif %}">
                                     <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonPink hover:bg-[rgba(255,0,160,0.1)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
-                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonCyan shadow-[0_0_10px_rgba(0,240,255,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}SYNC{% else %}Like{% endif %}</span>
+                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonCyan shadow-[0_0_10px_rgba(0,240,255,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}LIKE{% else %}Like{% endif %}</span>
                                     </button>
                                 </div>
                             </div>
@@ -219,7 +219,7 @@
             <section class="section pb-0 {% if ui_variant == 'v2' %}cyber-similar-section{% endif %}">
                 <div class="container">
                     <p class="is-size-4 {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-white text-xl font-bold{% endif %}">
-                        SEMANTIC NEIGHBORS
+                        {% if ui_variant == 'v2' %}BASED ON YOUR LIKES{% else %}Liked with Similar Items{% endif %}
                     </p>
                     <p class="mb-5 {% if ui_variant == 'v2' %}text-neonPink border-l-2 border-neonPink pl-3 text-sm{% endif %}">{{ likes_similar_message }}</p>
 
@@ -249,7 +249,7 @@
 
                                 <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonCyan{% endif %}">
                                     <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonCyan hover:bg-[rgba(0,240,255,0.1)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
-                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonGreen shadow-[0_0_10px_rgba(0,255,63,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}SYNC{% else %}Like{% endif %}</span>
+                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonGreen shadow-[0_0_10px_rgba(0,255,63,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}LIKE{% else %}Like{% endif %}</span>
                                     </button>
                                 </div>
                             </div>
@@ -264,8 +264,8 @@
             <section class="section pb-0 {% if ui_variant == 'v2' %}cyber-likes-section{% endif %}">
                 <div class="container">
                     <p class="is-size-4 mb-3 flex items-center gap-4 {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-white text-xl font-bold{% endif %}">
-                        STORED VECTORS 
-                        <button class="button {% if ui_variant == 'v2' %}is-small bg-cyberBlack border border-neonGreen text-neonGreen hover:bg-neonGreen hover:text-black font-body uppercase tracking-wider{% endif %}" @click="reloadPage"><i class="fa fa-refresh mr-1" aria-hidden="true"></i>{% if ui_variant == 'v2' %}RE-CALC{% else %}Refresh{% endif %}</button>
+                        {% if ui_variant == 'v2' %}YOUR LIKES{% else %}Liked{% endif %}
+                        <button class="button {% if ui_variant == 'v2' %}is-small bg-cyberBlack border border-neonGreen text-neonGreen hover:bg-neonGreen hover:text-black font-body uppercase tracking-wider{% endif %}" @click="reloadPage"><i class="fa fa-refresh mr-1" aria-hidden="true"></i>{% if ui_variant == 'v2' %}REFRESH{% else %}Refresh{% endif %}</button>
                     </p>
 
                     <div class="columns is-mobile pb-3" style="overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap;">
@@ -294,7 +294,7 @@
 
                                 <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonGreen{% endif %}">
                                     <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonGreen hover:bg-[rgba(0,255,63,0.1)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
-                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonGreen shadow-[0_0_10px_rgba(0,255,63,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}UNSYNC{% else %}Like{% endif %}</span>
+                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonGreen shadow-[0_0_10px_rgba(0,255,63,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}UNLIKE{% else %}Like{% endif %}</span>
                                     </button>
                                 </div>
                             </div>
@@ -310,10 +310,10 @@
             <div class="modal-background {% if ui_variant == 'v2' %}bg-[rgba(5,5,16,0.9)] backdrop-blur-sm{% endif %}"></div>
             <div class="modal-card {% if ui_variant == 'v2' %}border-2 border-neonCyan shadow-[0_0_30px_rgba(0,240,255,0.4)]{% endif %}">
                 <header class="modal-card-head {% if ui_variant == 'v2' %}bg-cyberBlack border-b border-gray-800{% endif %}">
-                    <p class="modal-card-title {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-neonPink text-xl font-bold{% endif %}">INITIALIZE CORE NODES</p>
+                    <p class="modal-card-title {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-neonPink text-xl font-bold{% endif %}">{% if ui_variant == 'v2' %}SELECT GENRES{% else %}Please choose any genre you're interested in.{% endif %}</p>
                 </header>
                 <div class="modal-card-body {% if ui_variant == 'v2' %}bg-cyberGray text-white font-body{% endif %}">
-                    <p class="mb-3 {% if ui_variant == 'v2' %}text-neonCyan opacity-80 border-l border-neonCyan pl-2 text-sm uppercase tracking-wider{% endif %}">Array selection allowed. Awaiting input.</p>
+                    <p class="mb-3 {% if ui_variant == 'v2' %}text-neonCyan opacity-80 border-l border-neonCyan pl-2 text-sm uppercase tracking-wider{% endif %}">{% if ui_variant == 'v2' %}Multiple selections allowed.{% else %}Multiple answers are possible.{% endif %}</p>
                     {% for gener in genres %}
                     <button :class="['button m-2', inGenres({{gener['id']}}) ? '{% if ui_variant == 'v2' %}bg-neonCyan text-black border-neonCyan shadow-[0_0_15px_rgba(0,240,255,0.7)]{% else %}is-link{% endif %}' : '{% if ui_variant == 'v2' %}bg-cyberBlack text-gray-400 border border-gray-700 hover:border-neonPink hover:text-neonPink{% endif %}' ]" value="{{gener['id']}}" class="{% if ui_variant == 'v2' %}font-display uppercase tracking-widest transition-all{% endif %}"
                             @click="updateGenre({{gener['id']}})">
