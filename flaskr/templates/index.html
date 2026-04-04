@@ -4,10 +4,38 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Movie Recommender System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Rajdhani', 'sans-serif'],
+                        body: ['"Share Tech Mono"', 'monospace'],
+                    },
+                    colors: {
+                        neonPink: '#ff00a0',
+                        neonCyan: '#00f0ff',
+                        neonGreen: '#00ff3f',
+                        cyberBlack: '#050510',
+                        cyberGray: '#151522',
+                    },
+                },
+            },
+        }
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        .cyber-glitch:hover {
+            text-shadow: 2px 0 #ff00a0, -2px 0 #00f0ff;
+        }
+    </style>
 </head>
-<body>
+<body class="{% if ui_variant == 'v2' %}bg-cyberBlack font-body text-neonCyan{% endif %}">
 <div id="app">
     <template v-if="isLoading">
         <section class="hero is-fullheight">
@@ -22,33 +50,43 @@
     </template>
     <template v-else>
         <div class="container">
-            <nav :class="['navbar', 'is-active']" role="navigation" aria-label="main navigation">
+            <nav :class="['navbar', 'is-active', {% if ui_variant == 'v2' %}'bg-cyberBlack border-b border-neonPink shadow-[0_5px_20px_rgba(255,0,160,0.3)]'{% endif %}]" role="navigation" aria-label="main navigation">
                 <div class="navbar-brand">
                     <a class="navbar-item" href="/">
-                        <span class="is-size-3">Movies Recommender System</span>
+                        <span class="is-size-3 {% if ui_variant == 'v2' %}font-display font-bold text-neonCyan tracking-[0.2em] uppercase cyber-glitch{% endif %}">{% if ui_variant == 'v2' %}NEURAL_LINK>__{% else %}Movies Recommender System{% endif %}</span>
                     </a>
 
                     <a role="button" :class="['navbar-burger', isActivityNavBar ? 'is-active' : '']" aria-label="menu"
                        aria-expanded="false"
                        data-target="navbarBasicExample" @click="isActivityNavBar = !isActivityNavBar">
-                        <span aria-hidden="true"></span>
-                        <span aria-hidden="true"></span>
-                        <span aria-hidden="true"></span>
+                        <span aria-hidden="true" class="{% if ui_variant == 'v2' %}text-neonPink{% endif %}"></span>
+                        <span aria-hidden="true" class="{% if ui_variant == 'v2' %}text-neonPink{% endif %}"></span>
+                        <span aria-hidden="true" class="{% if ui_variant == 'v2' %}text-neonPink{% endif %}"></span>
                     </a>
                 </div>
 
-                <div id="navbarBasicExample" :class="['navbar-menu', isActivityNavBar ? 'is-active' : '']">
+                <div id="navbarBasicExample" :class="['navbar-menu', isActivityNavBar ? 'is-active' : '', {% if ui_variant == 'v2' %}isActivityNavBar ? 'bg-cyberBlack' : 'bg-transparent'{% endif %}]">
                     <div class="navbar-start">
                     </div>
                     <div class="navbar-end">
                         <div class="navbar-item">
                             <div class="buttons">
-                                <button class="button is-danger" @click="cleanAll">
-                                    <strong>Clean All</strong>
+                                {% if ui_variant == 'v2' %}
+                                <a class="button {% if ui_variant == 'v2' %}bg-transparent border border-neonCyan text-neonCyan hover:bg-neonCyan hover:text-black font-body uppercase tracking-wider{% else %}is-warning is-light{% endif %}" href="/?variant={{ ab_variant }}{% if participant_id %}&participant_id={{ participant_id }}{% endif %}&ui=classic">
+                                    <strong>REVERT UI</strong>
+                                </a>
+                                {% else %}
+                                <a class="button is-primary is-light" href="/?variant={{ ab_variant }}{% if participant_id %}&participant_id={{ participant_id }}{% endif %}&ui=v2">
+                                    <strong>Studio UI</strong>
+                                </a>
+                                {% endif %}
+
+                                <button class="button {% if ui_variant == 'v2' %}bg-transparent border border-neonPink text-neonPink hover:bg-neonPink hover:text-black font-body uppercase tracking-wider{% else %}is-danger{% endif %}" @click="cleanAll">
+                                    <strong>PURGE DATA</strong>
                                 </button>
 
-                                <button class="button is-link" @click="showGenres = true">
-                                    <strong>Genres</strong>
+                                <button class="button {% if ui_variant == 'v2' %}bg-neonGreen border-0 text-black shadow-[0_0_15px_rgba(0,255,63,0.8)] hover:bg-white font-body uppercase tracking-wider font-bold{% else %}is-link{% endif %}" @click="showGenres = true">
+                                    <strong>SELECT.NODES()</strong>
                                 </button>
                             </div>
                         </div>
@@ -57,39 +95,116 @@
             </nav>
         </div>
 
+        {% if ui_variant == 'v2' %}
+        <section class="section pt-3 pb-2">
+            <div class="container">
+                <div class="relative overflow-hidden border-2 border-neonPink bg-cyberGray p-6 shadow-[0_0_20px_rgba(255,0,160,0.5)] skew-x-[-2deg]">
+                    <div class="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(0,240,255,0.2),transparent_70%)] animate-pulse"></div>
+                    <div class="grid gap-6 lg:grid-cols-[1.5fr_1fr] skew-x-[2deg]">
+                    <div>
+                        <p class="font-display text-sm font-bold uppercase tracking-[0.3em] text-neonGreen">SYS.ALG: {{ ab_variant }} // NEON OVERRIDE</p>
+                        <h1 class="font-display text-4xl font-bold uppercase leading-[1.1] text-white lg:text-6xl cyber-glitch">Decode<br/>The Matrix</h1>
+                        <p class="mt-4 max-w-[62ch] text-[1.1rem] text-neonCyan opacity-80 border-l-2 border-neonPink pl-3">Genre arrays initialize candidate space. Rating logs construct temporal profiles. Like vectors enable semantic routing.</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
+                            <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
+                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Gen.Nodes</p>
+                            <strong class="text-3xl text-neonPink">{{ feedback_state['genres_count'] }}</strong>
+                        </article>
+                        <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
+                            <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
+                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Rat.Logs</p>
+                            <strong class="text-3xl text-neonPink">[[ userRates.length ]]</strong>
+                        </article>
+                        <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
+                            <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
+                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">L.Vectors</p>
+                            <strong class="text-3xl text-neonPink">[[ userLikes.length ]]</strong>
+                        </article>
+                        <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
+                            <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
+                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Mem.Blend</p>
+                            <strong class="text-3xl text-neonPink">{{ "%.0f"|format(collaborative_weight * 100) }}/{{ "%.0f"|format(semantic_weight * 100) }}</strong>
+                        </article>
+                    </div>
+                </div>
+                </div>
+
+                <div class="mt-6 grid gap-4 md:grid-cols-3">
+                    <article class="border border-gray-700 bg-cyberGray p-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-neonGreen transition-colors">
+                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Phase.01</p>
+                        <h3 class="font-display text-xl text-white uppercase">Initialize Lens</h3>
+                        <p class="text-sm text-gray-400 mt-2">Selected core genres collapse the infinite probability wave.</p>
+                    </article>
+                    <article class="border border-gray-700 bg-cyberGray p-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-neonGreen transition-colors">
+                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Phase.02</p>
+                        <h3 class="font-display text-xl text-white uppercase">Sync Memory</h3>
+                        <p class="text-sm text-gray-400 mt-2">Chronological rating injections train your neural preference net.</p>
+                    </article>
+                    <article class="border border-gray-700 bg-cyberGray p-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-neonGreen transition-colors">
+                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Phase.03</p>
+                        <h3 class="font-display text-xl text-white uppercase">Engage Boost</h3>
+                        <p class="text-sm text-gray-400 mt-2">Positive interactions supercharge nearby entity vectors.</p>
+                    </article>
+                </div>
+
+                <div class="mt-6 border-l-4 border-neonPink bg-cyberGray p-4" v-if="{{ feedback_state['selected_genres']|length }} > 0">
+                    <p class="font-display text-sm font-bold uppercase tracking-[0.2em] text-white">Active Node Filters</p>
+                    <div class="mt-3 flex flex-wrap gap-3">
+                        {% for genre_name in feedback_state['selected_genres'] %}
+                        <span class="border border-neonCyan bg-cyberBlack px-4 py-1 text-sm font-bold uppercase tracking-[0.1em] text-neonCyan shadow-[0_0_5px_rgba(0,240,255,0.5)]">{{ genre_name }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+
         <template v-if="genres.length > 0 && userRates.length > 0">
             {% if recommendations %}
-            <section class="section pt-2 pb-0">
+            <section class="section pt-2 pb-0 {% if ui_variant == 'v2' %}cyber-recommend-section{% endif %}">
                 <div class="container">
-                    <p class="is-size-4">
-                        Recommended
+                    <p class="is-size-4 {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-white text-2xl font-bold{% endif %}">
+                        TARGET DETECTED
                     </p>
-                    <p class="mb-3">{{ recommendations_message }}</p>
+                    <p class="mb-5 {% if ui_variant == 'v2' %}text-neonCyan border-l-2 border-neonCyan pl-3 text-sm{% endif %}">{{ recommendations_message }}</p>
 
                     <div class="columns is-mobile is-multiline">
                         {% for movie in recommendations %}
                         <div class="column is-3-fullhd is-3-desktop is-3-tablet is-6-mobile">
-                            <div class="card">
-                                <div class="card-image">
+                            <div class="card {% if ui_variant == 'v2' %}border-l-4 border-r-0 border-y-0 border-l-neonPink bg-cyberGray shadow-[0_5px_15px_rgba(0,0,0,0.8)] transition-all duration-300 hover:border-l-neonCyan hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:-translate-y-2{% endif %}">
+                                <div class="card-image relative">
                                     <figure class="image is-4by3">
                                         <img src="{{ movie['cover_url'] }}"
                                              onerror="this.src='https://placehold.co/480x640?text=No+Cover';"
-                                             alt="">
+                                             alt=""
+                                             {% if ui_variant == 'v2' %}class="sepia blur-[1px] group-hover:blur-0 group-hover:sepia-0 transition-all mix-blend-luminosity hover:mix-blend-normal"{% endif %}>
                                     </figure>
+                                    {% if ui_variant == 'v2' %}
+                                    <div class="absolute inset-0 bg-gradient-to-t from-cyberBlack via-transparent to-transparent pointer-events-none"></div>
+                                    {% endif %}
                                 </div>
-                                <div class="card-content p-2">
+                                <div class="card-content p-3 {% if ui_variant == 'v2' %}bg-cyberBlack text-white border-t border-gray-800 relative{% endif %}">
                                     <div class="media">
                                         <div class="media-content">
-                                            <p style="font-size: 0.8rem; font-weight: bold">{{ movie['title']
-                                                }}</p>
-                                            <p style="font-size: 0.8rem">{{ movie['release_date'] }}</p>
+                                            <p class="{% if ui_variant == 'v2' %}font-display font-bold uppercase text-neonCyan mb-1 leading-tight tracking-[0.05em]{% else %}font-bold text-[0.8rem]{% endif %}">{{ movie['title'] }}</p>
+                                            <p class="{% if ui_variant == 'v2' %}text-[0.7rem] text-gray-500 font-body mb-2{% else %}text-[0.8rem]{% endif %}">{{ movie['release_date'] }}</p>
+                                            {% if ui_variant == 'v2' %}
+                                            <div class="border-t border-dotted border-gray-700 pt-2 mt-2">
+                                                <p class="font-display text-xs tracking-[0.2em] font-bold text-neonGreen" v-if="movieScore({{movie['movieId']}})">MATCH: [[ (movieScore({{movie['movieId']}}) * 100).toFixed(1) ]]%</p>
+                                                <div class="mt-2 flex flex-wrap gap-1" v-if="movieReasonTags({{movie['movieId']}}).length > 0">
+                                                    <span class="border border-gray-800 bg-[rgba(255,0,160,0.1)] px-2 py-[2px] font-display text-[9px] uppercase tracking-[0.1em] text-neonPink whitespace-nowrap" v-for="reason in movieReasonTags({{movie['movieId']}})" :key="reason">[[ reason ]]</span>
+                                                </div>
+                                            </div>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="card-footer p-2">
-                                    <button class="button is-small" @click="updateLike({{movie['movieId']}})">
-                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? 'checked': '']" > Like</span>
+                                <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonPink flex justify-between items-center{% endif %}">
+                                    <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonPink hover:bg-[rgba(255,0,160,0.1)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
+                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonCyan shadow-[0_0_10px_rgba(0,240,255,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}SYNC{% else %}Like{% endif %}</span>
                                     </button>
                                 </div>
                             </div>
@@ -101,37 +216,40 @@
             {% endif %}
 
             {% if likes_similars %}
-            <section class="section pb-0">
+            <section class="section pb-0 {% if ui_variant == 'v2' %}cyber-similar-section{% endif %}">
                 <div class="container">
-                    <p class="is-size-4">
-                        Liked with Similar Items
+                    <p class="is-size-4 {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-white text-xl font-bold{% endif %}">
+                        SEMANTIC NEIGHBORS
                     </p>
-                    <p class="mb-3">{{ likes_similar_message }}</p>
+                    <p class="mb-5 {% if ui_variant == 'v2' %}text-neonPink border-l-2 border-neonPink pl-3 text-sm{% endif %}">{{ likes_similar_message }}</p>
 
                     <div class="columns is-mobile is-multiline">
                         {% for movie in likes_similars %}
                         <div class="column is-2-fullhd is-2-desktop is-2-tablet is-6-mobile">
-                            <div class="card">
-                                <div class="card-image">
+                            <div class="card {% if ui_variant == 'v2' %}border-l-2 border-r-0 border-y-0 border-l-neonCyan bg-cyberGray shadow-[0_5px_15px_rgba(0,0,0,0.8)] transition-all duration-300 hover:border-l-neonGreen hover:shadow-[0_0_15px_rgba(0,255,63,0.4)] hover:-translate-y-1 opacity-80 hover:opacity-100{% endif %}">
+                                <div class="card-image relative">
                                     <figure class="image is-3by4">
                                         <img src="{{ movie['cover_url'] }}"
                                              onerror="this.src='https://placehold.co/480x640?text=No+Cover';"
-                                             alt="">
+                                             alt=""
+                                             {% if ui_variant == 'v2' %}class="grayscale hover:grayscale-0 transition-all"{% endif %}>
                                     </figure>
+                                    {% if ui_variant == 'v2' %}
+                                    <div class="absolute inset-0 bg-gradient-to-t from-cyberBlack via-transparent to-transparent pointer-events-none"></div>
+                                    {% endif %}
                                 </div>
-                                <div class="card-content p-2">
+                                <div class="card-content p-2 {% if ui_variant == 'v2' %}bg-cyberBlack text-white border-t border-gray-800{% endif %}">
                                     <div class="media">
                                         <div class="media-content">
-                                            <p style="font-size: 0.8rem; font-weight: bold">{{ movie['title']
-                                                }}</p>
-                                            <p style="font-size: 0.8rem">{{ movie['release_date'] }}</p>
+                                            <p class="{% if ui_variant == 'v2' %}font-display font-bold uppercase text-neonGreen mb-1 leading-tight text-[0.8rem] tracking-[0.05em] truncate{% else %}font-bold text-[0.8rem]{% endif %}">{{ movie['title'] }}</p>
+                                            <p class="{% if ui_variant == 'v2' %}text-[0.65rem] text-gray-500 font-body{% else %}text-[0.8rem]{% endif %}">{{ movie['release_date'] }}</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="card-footer p-2">
-                                    <button class="button is-small" @click="updateLike({{movie['movieId']}})">
-                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? 'checked': '']" > Like</span>
+                                <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonCyan{% endif %}">
+                                    <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonCyan hover:bg-[rgba(0,240,255,0.1)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
+                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonGreen shadow-[0_0_10px_rgba(0,255,63,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}SYNC{% else %}Like{% endif %}</span>
                                     </button>
                                 </div>
                             </div>
@@ -143,36 +261,40 @@
             {% endif %}
 
             {% if likes %}
-            <section class="section pb-0">
+            <section class="section pb-0 {% if ui_variant == 'v2' %}cyber-likes-section{% endif %}">
                 <div class="container">
-                    <p class="is-size-4 mb-3">
-                        Liked <button class="button" @click="reloadPage"><i class="fa fa-refresh mr-3" aria-hidden="true"></i>Refresh</button>
+                    <p class="is-size-4 mb-3 flex items-center gap-4 {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-white text-xl font-bold{% endif %}">
+                        STORED VECTORS 
+                        <button class="button {% if ui_variant == 'v2' %}is-small bg-cyberBlack border border-neonGreen text-neonGreen hover:bg-neonGreen hover:text-black font-body uppercase tracking-wider{% endif %}" @click="reloadPage"><i class="fa fa-refresh mr-1" aria-hidden="true"></i>{% if ui_variant == 'v2' %}RE-CALC{% else %}Refresh{% endif %}</button>
                     </p>
 
-                    <div class="columns is-mobile pb-3" style="overflow: scroll">
+                    <div class="columns is-mobile pb-3" style="overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap;">
                         {% for movie in likes %}
-                        <div class="column is-2-fullhd is-2-desktop is-2-tablet is-6-mobile">
-                            <div class="card">
-                                <div class="card-image">
+                        <div class="column is-2-fullhd is-2-desktop is-3-tablet is-6-mobile" style="flex: 0 0 auto;">
+                            <div class="card {% if ui_variant == 'v2' %}border-l-2 border-r-0 border-y-0 border-l-neonGreen bg-cyberGray shadow-[0_5px_15px_rgba(0,0,0,0.8)] transition-all duration-300 hover:border-l-white hover:shadow-[0_0_15px_rgba(255,255,255,0.4)] hover:-translate-y-1 opacity-70 hover:opacity-100{% endif %}">
+                                <div class="card-image relative">
                                     <figure class="image is-3by4">
                                         <img src="{{ movie['cover_url'] }}"
                                              onerror="this.src='https://placehold.co/480x640?text=No+Cover';"
-                                             alt="">
+                                             alt=""
+                                             {% if ui_variant == 'v2' %}class="hue-rotate-90 hover:hue-rotate-0 transition-all"{% endif %}>
                                     </figure>
+                                    {% if ui_variant == 'v2' %}
+                                    <div class="absolute inset-0 bg-gradient-to-t from-cyberBlack via-transparent to-transparent pointer-events-none"></div>
+                                    {% endif %}
                                 </div>
-                                <div class="card-content p-2">
+                                <div class="card-content p-2 {% if ui_variant == 'v2' %}bg-cyberBlack text-white border-t border-gray-800{% endif %}">
                                     <div class="media">
                                         <div class="media-content">
-                                            <p style="font-size: 0.8rem; font-weight: bold">{{ movie['title']
-                                                }}</p>
-                                            <p style="font-size: 0.8rem">{{ movie['release_date'] }}</p>
+                                            <p class="{% if ui_variant == 'v2' %}font-display font-bold uppercase text-white mb-1 leading-tight text-[0.8rem] tracking-[0.05em] truncate{% else %}font-bold text-[0.8rem]{% endif %}">{{ movie['title'] }}</p>
+                                            <p class="{% if ui_variant == 'v2' %}text-[0.65rem] text-gray-500 font-body{% else %}text-[0.8rem]{% endif %}">{{ movie['release_date'] }}</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="card-footer p-2">
-                                    <button class="button is-small" @click="updateLike({{movie['movieId']}})">
-                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? 'checked': '']" > Like</span>
+                                <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonGreen{% endif %}">
+                                    <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonGreen hover:bg-[rgba(0,255,63,0.1)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
+                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonGreen shadow-[0_0_10px_rgba(0,255,63,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}UNSYNC{% else %}Like{% endif %}</span>
                                     </button>
                                 </div>
                             </div>
@@ -185,20 +307,23 @@
         </template>
 
         <div :class="['modal', showGenres ? 'is-active' : '']">
-            <div class="modal-background"></div>
-            <div class="modal-card">
-                <header class="modal-card-head">
-                    <p class="modal-card-title">Please choose any genre you're interested in.</p>
+            <div class="modal-background {% if ui_variant == 'v2' %}bg-[rgba(5,5,16,0.9)] backdrop-blur-sm{% endif %}"></div>
+            <div class="modal-card {% if ui_variant == 'v2' %}border-2 border-neonCyan shadow-[0_0_30px_rgba(0,240,255,0.4)]{% endif %}">
+                <header class="modal-card-head {% if ui_variant == 'v2' %}bg-cyberBlack border-b border-gray-800{% endif %}">
+                    <p class="modal-card-title {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-neonPink text-xl font-bold{% endif %}">INITIALIZE CORE NODES</p>
                 </header>
-                <div class="modal-card-body">
-                    <p class="mb-3">Multiple answers are possible.</p>
+                <div class="modal-card-body {% if ui_variant == 'v2' %}bg-cyberGray text-white font-body{% endif %}">
+                    <p class="mb-3 {% if ui_variant == 'v2' %}text-neonCyan opacity-80 border-l border-neonCyan pl-2 text-sm uppercase tracking-wider{% endif %}">Array selection allowed. Awaiting input.</p>
                     {% for gener in genres %}
-                    <button :class="['button m-2', inGenres({{gener['id']}}) ? 'is-link' : '' ]" value="{{gener['id']}}"
+                    <button :class="['button m-2', inGenres({{gener['id']}}) ? '{% if ui_variant == 'v2' %}bg-neonCyan text-black border-neonCyan shadow-[0_0_15px_rgba(0,240,255,0.7)]{% else %}is-link{% endif %}' : '{% if ui_variant == 'v2' %}bg-cyberBlack text-gray-400 border border-gray-700 hover:border-neonPink hover:text-neonPink{% endif %}' ]" value="{{gener['id']}}" class="{% if ui_variant == 'v2' %}font-display uppercase tracking-widest transition-all{% endif %}"
                             @click="updateGenre({{gener['id']}})">
                         {{gener['name']}}
                     </button>
                     {% endfor %}
                 </div>
+            </div>
+            <button class="modal-close is-large" aria-label="close" @click="showGenres = false"></button>
+        </div>
                 <footer class="modal-card-foot">
                     <button class="button is-link" :disabled="genres.length == 0" @click="saveGenres">Save
                     </button>
@@ -272,6 +397,8 @@
 
 <script type="module">
     import {createApp, onMounted, ref} from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+
+    const recommendationData = {{ recommendations | tojson }}
 
     let app = createApp({
         setup() {
@@ -368,6 +495,40 @@
                 return userLikes.value.includes(movieId.toString())
             }
 
+            function movieScore(movieId) {
+                const movie = recommendationData.find((entry) => entry.movieId === movieId)
+                if (!movie) {
+                    return ''
+                }
+                if (typeof movie.final_score === 'number') {
+                    return movie.final_score.toFixed(3)
+                }
+                if (typeof movie.similarity === 'number') {
+                    return movie.similarity.toFixed(3)
+                }
+                return ''
+            }
+
+            function movieReasonTags(movieId) {
+                const movie = recommendationData.find((entry) => entry.movieId === movieId)
+                if (!movie) {
+                    return []
+                }
+
+                const tags = []
+                if (typeof movie.final_score === 'number') {
+                    tags.push('Hybrid ranking')
+                    tags.push('Temporal rating fit')
+                }
+                if (typeof movie.similarity === 'number') {
+                    tags.push('Semantic proximity')
+                }
+                if (tags.length === 0) {
+                    tags.push('Preference match')
+                }
+                return tags
+            }
+
 
             function reloadPage() {
                 location.reload();
@@ -392,6 +553,8 @@
                 userLikes,
                 updateLike,
                 inLikes,
+                movieScore,
+                movieReasonTags,
 
                 reloadPage,
             }
@@ -404,6 +567,117 @@
 
 </script>
 <style>
+    .studio-body {
+        background:
+            radial-gradient(circle at 12% 20%, rgba(197, 86, 21, 0.14), transparent 28%),
+            radial-gradient(circle at 80% 16%, rgba(54, 97, 46, 0.11), transparent 24%),
+            #efe8d4;
+        color: #221c12;
+    }
+
+    .studio-body .navbar,
+    .studio-body .card,
+    .studio-body .modal-card,
+    .studio-body .footer {
+        border: 1px solid #d8c9a3;
+        border-radius: 14px;
+        background: rgba(255, 249, 236, 0.88);
+        box-shadow: 0 16px 34px rgba(77, 52, 16, 0.12);
+        backdrop-filter: blur(4px);
+    }
+
+    .studio-hero {
+        border: 1px solid #ccb889;
+        border-radius: 18px;
+        padding: 1.1rem;
+        background: rgba(255, 248, 230, 0.84);
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: 1.5fr 1fr;
+    }
+
+    .studio-overline {
+        font-family: 'Syne', sans-serif;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        margin: 0 0 0.25rem;
+        color: #6f6246;
+    }
+
+    .studio-title {
+        font-family: 'Syne', sans-serif;
+        font-size: clamp(1.4rem, 4vw, 2.2rem);
+        line-height: 1.08;
+        margin: 0;
+    }
+
+    .studio-copy {
+        margin: 0.6rem 0 0;
+        font-family: 'Spectral', serif;
+        color: #5e533f;
+    }
+
+    .studio-metrics {
+        display: grid;
+        gap: 0.55rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .metric-card {
+        border: 1px dashed #b9a273;
+        border-radius: 10px;
+        padding: 0.45rem 0.55rem;
+        background: rgba(255, 251, 240, 0.94);
+    }
+
+    .metric-card p {
+        margin: 0;
+        font-size: 0.75rem;
+        color: #6a5b40;
+    }
+
+    .metric-card strong {
+        font-family: 'Syne', sans-serif;
+        font-size: 1.2rem;
+    }
+
+    .studio-score {
+        margin-top: 0.35rem;
+        font-family: 'Syne', sans-serif;
+        font-size: 0.74rem;
+        color: #8f3a07;
+    }
+
+    .studio-reasons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        margin-top: 0.3rem;
+    }
+
+    .studio-reason-chip {
+        font-family: 'Syne', sans-serif;
+        font-size: 0.68rem;
+        border-radius: 999px;
+        border: 1px solid #b9a98a;
+        padding: 0.12rem 0.42rem;
+        background: #fffaf0;
+    }
+
+    .reveal {
+        opacity: 0;
+        transform: translateY(10px);
+        animation: studio-rise 520ms ease-out forwards;
+    }
+
+    @keyframes studio-rise {
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
     .modal-content, .modal-card {
         width: calc(100% - 4em);
 
@@ -432,6 +706,12 @@
 
     .star {
         cursor: pointer;
+    }
+
+    @media screen and (max-width: 768px) {
+        .studio-hero {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 </body>

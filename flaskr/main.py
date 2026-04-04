@@ -34,6 +34,7 @@ movies, genres, rates = loadData()
 def index():
     participant_id = request.args.get('participant_id', '').strip()
     variant = _get_ab_variant()
+    ui_variant = _get_ui_variant()
     if variant is None:
         return render_template_string(
             """
@@ -51,8 +52,10 @@ def index():
                         <div class="container" style="max-width: 720px;">
                             <div class="box">
                                 <h1 class="title">Choose a Test Route</h1>
-                                <p class="subtitle">Select which system version this participant should use for the algorithm A/B test.</p>
+                                <p class="subtitle">Select one of the three test combinations.</p>
                                 <form method="get" action="/">
+                                    <input type="hidden" id="variant_input" name="variant" value="">
+                                    <input type="hidden" id="ui_input" name="ui" value="classic">
                                     <div class="field">
                                         <label class="label" for="participant_id">Participant ID</label>
                                         <div class="control">
@@ -60,14 +63,22 @@ def index():
                                         </div>
                                     </div>
                                     <div class="buttons">
-                                        <button class="button is-link" type="submit" name="variant" value="A">Route A: Original</button>
-                                        <button class="button is-primary" type="submit" name="variant" value="B">Route B: Enhanced</button>
+                                        <button class="button is-link" type="button" onclick="submitRoute('A', 'classic')">1) Same UI + Same Algorithm</button>
+                                        <button class="button is-info" type="button" onclick="submitRoute('B', 'classic')">2) Same UI + Different Algorithm</button>
+                                        <button class="button is-warning" type="button" onclick="submitRoute('A', 'v2')">3) Different UI + Same Algorithm</button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     </div>
                 </section>
+                <script>
+                    function submitRoute(variant, ui) {
+                        document.getElementById('variant_input').value = variant;
+                        document.getElementById('ui_input').value = ui;
+                        document.querySelector('form').submit();
+                    }
+                </script>
             </body>
             </html>
             """,
@@ -102,6 +113,22 @@ def index():
         likes_similar_movies, likes_similar_message = getLikedSimilarBy([int(numeric_string) for numeric_string in user_likes])
         likes_movies = getUserLikesBy(user_likes)
 
+    selected_genre_names = []
+    if user_genres:
+        try:
+            selected_ids = [int(genre_id) for genre_id in user_genres]
+            selected_rows = genres[genres['id'].isin(selected_ids)]
+            selected_genre_names = selected_rows['name'].tolist()
+        except ValueError:
+            selected_genre_names = []
+
+    feedback_state = {
+        'genres_count': len(user_genres),
+        'ratings_count': len(user_rates),
+        'likes_count': len(user_likes),
+        'selected_genres': selected_genre_names,
+    }
+
     response = make_response(render_template('index.html',
                                              genres=default_genres,
                                              user_genres=user_genres,
@@ -114,7 +141,11 @@ def index():
                                              likes_similar_message=likes_similar_message,
                                              likes=likes_movies,
                                              ab_variant=variant,
+                                             ui_variant=ui_variant,
                                              participant_id=participant_id,
+                                             collaborative_weight=COLLABORATIVE_WEIGHT,
+                                             semantic_weight=SEMANTIC_WEIGHT,
+                                             feedback_state=feedback_state,
                                              ))
     _log_ab_event(
         participant_id,
@@ -139,6 +170,13 @@ def _get_ab_variant():
     if forced_variant in {'A', 'B'}:
         return forced_variant
     return None
+
+
+def _get_ui_variant():
+    requested_ui = request.args.get('ui', 'classic').strip().lower()
+    if requested_ui in {'classic', 'v2'}:
+        return requested_ui
+    return 'classic'
 
 
 def _ab_log_path():
