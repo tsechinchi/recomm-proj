@@ -10,7 +10,7 @@ from flask import (
 )
 
 from .tools.data_tool import *
-from . import recommender_original_5c65775 as original_system
+from . import recommender_original as original_system
 
 try:
     from gensim.models import Word2Vec
