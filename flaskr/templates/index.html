@@ -17,11 +17,21 @@
                         body: ['"Share Tech Mono"', 'monospace'],
                     },
                     colors: {
-                        neonPink: '#ff00a0',
-                        neonCyan: '#00f0ff',
-                        neonGreen: '#00ff3f',
-                        cyberBlack: '#050510',
-                        cyberGray: '#151522',
+                        neonPink: '#a3786a',
+                        neonCyan: '#9ab3c0',
+                        neonGreen: '#93a784',
+                        cyberBlack: '#1a1f28',
+                        cyberGray: '#242c38',
+                        tokenSurface: '#1f2631',
+                        tokenPanel: '#293444',
+                        tokenBorder: '#8fa7b5',
+                        tokenText: '#e6e8ea',
+                        tokenMuted: '#b2b7bf',
+                        tokenAlert: '#b07a6d',
+                    },
+                    boxShadow: {
+                        tokenGlow: '0 0 0 1px rgba(143,167,181,0.35), 0 14px 30px rgba(0,0,0,0.45)',
+                        tokenNeon: '0 0 14px rgba(143,167,181,0.28)',
                     },
                 },
             },
@@ -31,11 +41,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
         .cyber-glitch:hover {
-            text-shadow: 2px 0 #ff00a0, -2px 0 #00f0ff;
+            text-shadow: 1px 0 rgba(163, 120, 106, 0.65), -1px 0 rgba(154, 179, 192, 0.65);
         }
     </style>
 </head>
-<body class="{% if ui_variant == 'v2' %}bg-cyberBlack font-body text-neonCyan{% endif %}">
+<body class="{% if ui_variant == 'v2' %}bg-cyberBlack font-body text-neonCyan v2-shell{% endif %}">
 <div id="app">
     <template v-if="isLoading">
         <section class="hero is-fullheight">
@@ -50,10 +60,10 @@
     </template>
     <template v-else>
         <div class="container">
-            <nav :class="['navbar', 'is-active', {% if ui_variant == 'v2' %}'bg-cyberBlack border-b border-neonPink shadow-[0_5px_20px_rgba(255,0,160,0.3)]'{% endif %}]" role="navigation" aria-label="main navigation">
+            <nav :class="['navbar', 'is-active', {% if ui_variant == 'v2' %}'bg-cyberBlack border-b border-neonPink shadow-[0_5px_20px_rgba(163,120,106,0.22)]'{% endif %}]" role="navigation" aria-label="main navigation">
                 <div class="navbar-brand">
                     <a class="navbar-item" href="/">
-                        <span class="is-size-3 {% if ui_variant == 'v2' %}font-display font-bold text-neonCyan tracking-[0.2em] uppercase cyber-glitch{% endif %}">{% if ui_variant == 'v2' %}Neon Recommender{% else %}Movies Recommender System{% endif %}</span>
+                        <span class="is-size-3 {% if ui_variant == 'v2' %}font-display font-bold text-neonCyan tracking-[0.2em] uppercase cyber-glitch{% endif %}">{% if ui_variant == 'v2' %}Studio Recommender{% else %}Movies Recommender System{% endif %}</span>
                     </a>
 
                     <a role="button" :class="['navbar-burger', isActivityNavBar ? 'is-active' : '']" aria-label="menu"
@@ -70,24 +80,29 @@
                     </div>
                     <div class="navbar-end">
                         <div class="navbar-item">
-                            <div class="buttons">
+                            <div class="buttons {% if ui_variant == 'v2' %}v2-nav-actions{% endif %}">
                                 {% if ui_variant == 'v2' %}
-                                <a class="button {% if ui_variant == 'v2' %}bg-transparent border border-neonCyan text-neonCyan hover:bg-neonCyan hover:text-black font-body uppercase tracking-wider{% else %}is-warning is-light{% endif %}" href="/?variant={{ ab_variant }}{% if participant_id %}&participant_id={{ participant_id }}{% endif %}&ui=classic">
-                                    <strong>ORIGINAL UI</strong>
+                                <span class="button is-small is-static bg-transparent border border-neonPink text-neonPink font-body uppercase tracking-wider v2-nav-pill" title="A/B algorithm group">Algorithm {{ ab_variant }}</span>
+                                {% if participant_id %}
+                                <span class="tag is-dark border border-neonCyan text-neonCyan bg-transparent">ID: {{ participant_id }}</span>
+                                {% endif %}
+                                <button class="button is-small bg-transparent border border-neonPink text-neonPink hover:bg-neonPink hover:text-black font-body uppercase tracking-wider v2-nav-pill" @click="toggleControlPanel">
+                                    <strong>[[ isControlPanelOpen ? 'CLOSE CONTROLS' : 'RECOMMENDATION CONTROLS' ]]</strong>
+                                </button>
+                                <a class="button is-small bg-transparent border border-neonCyan text-neonCyan hover:bg-neonCyan hover:text-black font-body uppercase tracking-wider" href="/?variant={{ ab_variant }}{% if participant_id %}&participant_id={{ participant_id }}{% endif %}&ui=classic">
+                                    <strong>Original UI</strong>
                                 </a>
                                 {% else %}
                                 <a class="button is-primary is-light" href="/?variant={{ ab_variant }}{% if participant_id %}&participant_id={{ participant_id }}{% endif %}&ui=v2">
                                     <strong>Studio UI</strong>
                                 </a>
-                                {% endif %}
-
-                                <button class="button {% if ui_variant == 'v2' %}bg-transparent border border-neonPink text-neonPink hover:bg-neonPink hover:text-black font-body uppercase tracking-wider{% else %}is-danger{% endif %}" @click="cleanAll">
+                                <button class="button is-danger" @click="cleanAll">
                                     <strong>{% if ui_variant == 'v2' %}CLEAR DATA{% else %}Clean All{% endif %}</strong>
                                 </button>
-
-                                <button class="button {% if ui_variant == 'v2' %}bg-neonGreen border-0 text-black shadow-[0_0_15px_rgba(0,255,63,0.8)] hover:bg-white font-body uppercase tracking-wider font-bold{% else %}is-link{% endif %}" @click="showGenres = true">
+                                <button class="button is-link" @click="showGenres = true">
                                     <strong>{% if ui_variant == 'v2' %}SELECT GENRES{% else %}Genres{% endif %}</strong>
                                 </button>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -96,71 +111,114 @@
         </div>
 
         {% if ui_variant == 'v2' %}
-        <section class="section pt-3 pb-2">
+        <section class="section pt-4 pb-3" v-if="!recommendationReady">
             <div class="container">
-                <div class="relative overflow-hidden border-2 border-neonPink bg-cyberGray p-6 shadow-[0_0_20px_rgba(255,0,160,0.5)] skew-x-[-2deg]">
-                    <div class="pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(0,240,255,0.2),transparent_70%)] animate-pulse"></div>
-                    <div class="grid gap-6 lg:grid-cols-[1.5fr_1fr] skew-x-[2deg]">
-                    <div>
-                        <p class="font-display text-sm font-bold uppercase tracking-[0.3em] text-neonGreen">Algorithm: {{ ab_variant }} // Neon Theme</p>
-                        <h1 class="font-display text-4xl font-bold uppercase leading-[1.1] text-white lg:text-6xl cyber-glitch">Discover<br/>Great Movies</h1>
-                        <p class="mt-4 max-w-[62ch] text-[1.1rem] text-neonCyan opacity-80 border-l-2 border-neonPink pl-3">Choosing genres sets your baseline. Rating logs build your profile. Liked movies enable advanced semantic matching.</p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
-                            <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Genres</p>
-                            <strong class="text-3xl text-neonPink">{{ feedback_state['genres_count'] }}</strong>
-                        </article>
-                        <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
-                            <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Ratings</p>
-                            <strong class="text-3xl text-neonPink">[[ userRates.length ]]</strong>
-                        </article>
-                        <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
-                            <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Likes</p>
-                            <strong class="text-3xl text-neonPink">[[ userLikes.length ]]</strong>
-                        </article>
-                        <article class="border border-neonCyan bg-cyberBlack p-3 font-display text-center relative overflow-hidden group">
-                            <div class="absolute inset-x-0 bottom-0 h-1 bg-neonCyan transform scale-x-0 group-hover:scale-x-100 transition-transform"></div>
-                            <p class="text-xs uppercase tracking-[0.2em] text-gray-400">Blend Ratio</p>
-                            <strong class="text-3xl text-neonPink">{{ "%.0f"|format(collaborative_weight * 100) }}/{{ "%.0f"|format(semantic_weight * 100) }}</strong>
-                        </article>
-                    </div>
-                </div>
-                </div>
+                <div class="v2-panel v2-hero">
+                    <div class="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(163,120,106,0.18),transparent_70%)]"></div>
+                    <p class="v2-overline">Algorithm {{ ab_variant }}</p>
+                    <h1 class="v2-title">Three-step setup for better movie recommendations</h1>
+                    <p class="v2-copy">Start with genres, add ratings, then fine-tune with likes. You can always undo your latest action.</p>
 
-                <div class="mt-6 grid gap-4 md:grid-cols-3">
-                    <article class="border border-gray-700 bg-cyberGray p-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-neonGreen transition-colors">
-                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Step 1</p>
-                        <h3 class="font-display text-xl text-white uppercase">Choose Genres</h3>
-                        <p class="text-sm text-gray-400 mt-2">Selecting core genres narrows down the overall movie recommendations.</p>
-                    </article>
-                    <article class="border border-gray-700 bg-cyberGray p-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-neonGreen transition-colors">
-                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Step 2</p>
-                        <h3 class="font-display text-xl text-white uppercase">Rate Movies</h3>
-                        <p class="text-sm text-gray-400 mt-2">Rating movies helps the timeline-aware collaborative model learn your taste.</p>
-                    </article>
-                    <article class="border border-gray-700 bg-cyberGray p-4 shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] hover:border-neonGreen transition-colors">
-                        <p class="font-display text-xs uppercase tracking-[0.2em] text-neonGreen mb-1">Step 3</p>
-                        <h3 class="font-display text-xl text-white uppercase">Like Movies</h3>
-                        <p class="text-sm text-gray-400 mt-2">Liking titles fine-tunes your recommendations pulling in similar semantic matches.</p>
-                    </article>
-                </div>
+                    <button class="button v2-btn v2-btn--primary is-medium" @click="startRecommendationFlow">START RECOMMENDATION</button>
 
-                <div class="mt-6 border-l-4 border-neonPink bg-cyberGray p-4" v-if="{{ feedback_state['selected_genres']|length }} > 0">
-                    <p class="font-display text-sm font-bold uppercase tracking-[0.2em] text-white">Active Genres</p>
-                    <div class="mt-3 flex flex-wrap gap-3">
-                        {% for genre_name in feedback_state['selected_genres'] %}
-                        <span class="border border-neonCyan bg-cyberBlack px-4 py-1 text-sm font-bold uppercase tracking-[0.1em] text-neonCyan shadow-[0_0_5px_rgba(0,240,255,0.5)]">{{ genre_name }}</span>
-                        {% endfor %}
+                    <p class="v2-copy mt-2">
+                        Completed: <strong class="text-neonCyan">[[ completedStepCount ]] / 3</strong>
+                        | Selected genres: <strong class="text-neonCyan">[[ genres.length ]]</strong>
+                        | Rated movies: <strong class="text-neonCyan">[[ userRates.length ]]</strong>
+                        | Recommendation ready:
+                        <strong :class="recommendationReady ? 'text-neonGreen' : 'text-neonPink'">[[ recommendationReady ? 'Yes' : 'No' ]]</strong>
+                    </p>
+
+                    <div class="v2-progress">
+                        <div class="v2-progress-bar" :style="{ width: stepProgressPercent + '%' }"></div>
+                    </div>
+
+                    <div class="v2-stepper">
+                        <article :class="['v2-step-card', stepOneDone ? 'is-complete' : '']">
+                            <p class="v2-step-index">STEP 1</p>
+                            <p class="v2-step-title">Choose Genres</p>
+                            <p class="v2-step-meta">[[ genres.length ]] selected</p>
+                        </article>
+                        <article :class="['v2-step-card', stepTwoDone ? 'is-complete' : '']">
+                            <p class="v2-step-index">STEP 2</p>
+                            <p class="v2-step-title">Rate Movies</p>
+                            <p class="v2-step-meta">[[ userRates.length ]] rated</p>
+                        </article>
+                        <article :class="['v2-step-card', stepThreeDone ? 'is-complete' : '']">
+                            <p class="v2-step-index">STEP 3</p>
+                            <p class="v2-step-title">Like Movies</p>
+                            <p class="v2-step-meta">[[ userLikes.length ]] liked</p>
+                        </article>
+                    </div>
+
+                    <div class="mt-5" v-if="selectedGenreLabels.length > 0">
+                        <p class="v2-overline mb-2">Selected Genres</p>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="v2-chip" v-for="genreName in selectedGenreLabels" :key="genreName">[[ genreName ]]</span>
+                        </div>
+                    </div>
+
+                    <div class="v2-notice" v-if="actionNotice">
+                        [[ actionNotice ]]
                     </div>
                 </div>
             </div>
         </section>
+
+        <div :class="['v2-control-backdrop', isControlPanelOpen ? 'is-active' : '']" @click="closeControlPanel"></div>
+
+        <aside :class="['v2-control-center', isControlPanelOpen ? 'is-open' : '']" :aria-hidden="(!isControlPanelOpen).toString()">
+            <div class="v2-control-head">
+                <p class="v2-overline mb-0">Recommendation Controls</p>
+                <button class="button v2-btn v2-panel-close" @click="closeControlPanel" aria-label="Close recommendation controls">
+                    <span class="fa fa-times" aria-hidden="true"></span>
+                </button>
+            </div>
+            <p class="text-sm text-tokenMuted mb-3">Use these actions anywhere on the page.</p>
+
+            <div class="v2-control-summary" v-if="recommendationReady">
+                <p class="v2-overline mb-1">Setup Status</p>
+                <p class="v2-control-summary-title">Setup completed. Recommendations are active.</p>
+            </div>
+
+            <div class="v2-control-summary" v-if="selectedGenreLabels.length > 0">
+                <p class="v2-overline mb-1">Selected Genres</p>
+                <div class="v2-control-chip-row">
+                    <span class="v2-chip" v-for="genreName in selectedGenreLabels" :key="'panel-' + genreName">[[ genreName ]]</span>
+                </div>
+            </div>
+
+            <div class="v2-control-grid mb-3">
+                <div class="v2-kpi">
+                    <span>Genres</span>
+                    <strong>[[ genres.length ]]</strong>
+                </div>
+                <div class="v2-kpi">
+                    <span>Ratings</span>
+                    <strong>[[ userRates.length ]]</strong>
+                </div>
+                <div class="v2-kpi">
+                    <span>Likes</span>
+                    <strong>[[ userLikes.length ]]</strong>
+                </div>
+                <div class="v2-kpi">
+                    <span>Ready</span>
+                    <strong :class="recommendationReady ? 'text-neonGreen' : 'text-neonPink'">[[ recommendationReady ? 'Yes' : 'No' ]]</strong>
+                </div>
+            </div>
+
+            <button class="button v2-btn w-full mb-2" @click="showGenres = true; closeControlPanel()">Select Genres</button>
+            <button class="button v2-btn w-full mb-2" @click="openRatingModal(); closeControlPanel()" :disabled="genres.length === 0">Rate Movies</button>
+            <button class="button v2-btn v2-btn--danger w-full mb-2" @click="cleanAll(); closeControlPanel()">Clear Data</button>
+            <a class="button v2-btn w-full" @click="closeControlPanel" href="/?variant={{ ab_variant }}{% if participant_id %}&participant_id={{ participant_id }}{% endif %}&ui=classic">Switch To Original UI</a>
+
+            <p class="text-xs mt-3" :class="requiresRefresh ? 'text-neonPink' : 'text-tokenMuted'">
+                [[ requiresRefresh ? 'Ratings are ready. Saving will auto-update recommendations.' : 'Likes and rating save actions update recommendations automatically.' ]]
+            </p>
+        </aside>
         {% endif %}
 
+        <div id="recommendation-anchor" v-if="genres.length > 0 && userRates.length > 0"></div>
         <template v-if="genres.length > 0 && userRates.length > 0">
             {% if recommendations %}
             <section class="section pt-2 pb-0 {% if ui_variant == 'v2' %}cyber-recommend-section{% endif %}">
@@ -194,7 +252,7 @@
                                             <div class="border-t border-dotted border-gray-700 pt-2 mt-2">
                                                 <p class="font-display text-xs tracking-[0.2em] font-bold text-neonGreen" v-if="movieScore({{movie['movieId']}})">MATCH: [[ (movieScore({{movie['movieId']}}) * 100).toFixed(1) ]]%</p>
                                                 <div class="mt-2 flex flex-wrap gap-1" v-if="movieReasonTags({{movie['movieId']}}).length > 0">
-                                                    <span class="border border-gray-800 bg-[rgba(255,0,160,0.1)] px-2 py-[2px] font-display text-[9px] uppercase tracking-[0.1em] text-neonPink whitespace-nowrap" v-for="reason in movieReasonTags({{movie['movieId']}})" :key="reason">[[ reason ]]</span>
+                                                    <span class="border border-gray-800 bg-[rgba(163,120,106,0.12)] px-2 py-[2px] font-display text-[9px] uppercase tracking-[0.1em] text-neonPink whitespace-nowrap" v-for="reason in movieReasonTags({{movie['movieId']}})" :key="reason">[[ reason ]]</span>
                                                 </div>
                                             </div>
                                             {% endif %}
@@ -203,7 +261,7 @@
                                 </div>
 
                                 <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonPink flex justify-between items-center{% endif %}">
-                                    <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonPink hover:bg-[rgba(255,0,160,0.1)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
+                                    <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonPink hover:bg-[rgba(163,120,106,0.12)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
                                         <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonCyan shadow-[0_0_10px_rgba(0,240,255,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}LIKE{% else %}Like{% endif %}</span>
                                     </button>
                                 </div>
@@ -248,7 +306,7 @@
                                 </div>
 
                                 <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonCyan{% endif %}">
-                                    <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonCyan hover:bg-[rgba(0,240,255,0.1)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
+                                    <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonCyan hover:bg-[rgba(154,179,192,0.12)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
                                         <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonGreen shadow-[0_0_10px_rgba(0,255,63,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}LIKE{% else %}Like{% endif %}</span>
                                     </button>
                                 </div>
@@ -293,8 +351,8 @@
                                 </div>
 
                                 <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonGreen{% endif %}">
-                                    <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonGreen hover:bg-[rgba(0,255,63,0.1)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
-                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonGreen shadow-[0_0_10px_rgba(0,255,63,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}UNLIKE{% else %}Like{% endif %}</span>
+                                    <button class="button is-small {% if ui_variant == 'v2' %}bg-transparent border-0 text-white hover:text-neonGreen hover:bg-[rgba(147,167,132,0.14)] transition-colors w-full uppercase font-display tracking-[0.1em]{% endif %}" @click="updateLike({{movie['movieId']}})">
+                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? '{% if ui_variant == 'v2' %}text-neonGreen shadow-[0_0_10px_rgba(0,255,63,1)]{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}LIKE{% else %}Like{% endif %}</span>
                                     </button>
                                 </div>
                             </div>
@@ -321,23 +379,21 @@
                     </button>
                     {% endfor %}
                 </div>
+                <footer class="modal-card-foot {% if ui_variant == 'v2' %}bg-cyberBlack border-t border-gray-800{% endif %}">
+                    <button class="button is-link" :disabled="genres.length == 0" @click="saveGenres">{% if ui_variant == 'v2' %}Save And Continue{% else %}Save{% endif %}</button>
+                    <button class="button" @click="showGenres = false">Cancel</button>
+                </footer>
             </div>
             <button class="modal-close is-large" aria-label="close" @click="showGenres = false"></button>
         </div>
-                <footer class="modal-card-foot">
-                    <button class="button is-link" :disabled="genres.length == 0" @click="saveGenres">Save
-                    </button>
-                </footer>
-            </div>
-        </div>
 
         <div :class="['modal', showMovieRate ? 'is-active' : '']">
-            <div class="modal-background"></div>
-            <div class="modal-card" style="max-width: 1000px">
-                <header class="modal-card-head">
-                    <p class="modal-card-title"></p>
+            <div class="modal-background {% if ui_variant == 'v2' %}bg-[rgba(5,5,16,0.9)] backdrop-blur-sm{% endif %}"></div>
+            <div class="modal-card {% if ui_variant == 'v2' %}border-2 border-neonPink shadow-[0_0_30px_rgba(255,0,160,0.3)]{% endif %}" style="max-width: 1000px">
+                <header class="modal-card-head {% if ui_variant == 'v2' %}bg-cyberBlack border-b border-gray-800{% endif %}">
+                    <p class="modal-card-title {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-neonCyan text-xl font-bold{% endif %}">{% if ui_variant == 'v2' %}RATE MOVIES{% else %}Please rate movies{% endif %}</p>
                 </header>
-                <div class="modal-card-body">
+                <div class="modal-card-body {% if ui_variant == 'v2' %}bg-cyberGray{% endif %}">
                     <div class="columns is-mobile is-multiline">
                         {% for movie in default_genres_movies %}
                         <div class="column is-3-fullhd is-3-desktop is-3-tablet is-6-mobile">
@@ -370,9 +426,8 @@
                     </div>
                 </div>
                 <footer class="modal-card-foot">
-                    <button class="button is-link" :disabled="userRates.length < 10"
-                            @click="showMovieRate = false; reloadPage()">Save
-                    </button>
+                    <button class="button is-link" :disabled="userRates.length < 10" @click="saveRatings">{% if ui_variant == 'v2' %}Save Ratings{% else %}Save{% endif %}</button>
+                    <button class="button" @click="showMovieRate = false">Cancel</button>
                 </footer>
             </div>
         </div>
@@ -395,47 +450,170 @@
     </template>
 </div>
 
-<script type="module">
-    import {createApp, onMounted, ref} from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+<script id="recommendation-data" type="application/json">{{ recommendations | tojson }}</script>
+<script id="genre-catalog-data" type="application/json">{{ genres | tojson }}</script>
+<script id="selected-genres-data" type="application/json">{{ user_genres | tojson }}</script>
+<script id="selected-rates-data" type="application/json">{{ user_rates | tojson }}</script>
+<script id="selected-likes-data" type="application/json">{{ user_likes | tojson }}</script>
+<script id="ui-variant-data" type="application/json">{{ ui_variant | tojson }}</script>
 
-    const recommendationData = {{ recommendations | tojson }}
+<script type="module">
+    import {computed, createApp, onMounted, ref} from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+
+    function parseJsonScript(tagId, fallbackValue) {
+        const target = document.getElementById(tagId)
+        if (!target) {
+            return fallbackValue
+        }
+        try {
+            const parsed = JSON.parse(target.textContent || 'null')
+            return parsed === null ? fallbackValue : parsed
+        } catch (_error) {
+            return fallbackValue
+        }
+    }
+
+    const recommendationData = parseJsonScript('recommendation-data', [])
+    const genreCatalog = parseJsonScript('genre-catalog-data', [])
+    const initialSelectedGenres = parseJsonScript('selected-genres-data', [])
+    const initialSelectedRates = parseJsonScript('selected-rates-data', [])
+    const initialSelectedLikes = parseJsonScript('selected-likes-data', [])
+    const uiVariant = parseJsonScript('ui-variant-data', 'classic')
 
     let app = createApp({
         setup() {
             const isLoading = ref(true)
             const isActivityNavBar = ref(false)
 
+            const showGenres = ref(false)
+            const genres = ref(initialSelectedGenres)
+
+            const showMovieRate = ref(false)
+            const userRates = ref(initialSelectedRates)
+            const userLikes = ref(initialSelectedLikes)
+
+            const actionHistory = ref([])
+            const actionNotice = ref('')
+            const requiresRefresh = ref(false)
+            const isControlPanelOpen = ref(false)
+
+            const stepOneDone = computed(() => genres.value.length > 0)
+            const stepTwoDone = computed(() => userRates.value.length > 0)
+            const stepThreeDone = computed(() => userLikes.value.length > 0)
+            const completedStepCount = computed(() => {
+                return [stepOneDone.value, stepTwoDone.value, stepThreeDone.value].filter(Boolean).length
+            })
+            const stepProgressPercent = computed(() => Math.round((completedStepCount.value / 3) * 100))
+            const recommendationReady = computed(() => stepOneDone.value && stepTwoDone.value)
+            const canUndo = computed(() => actionHistory.value.length > 0)
+            const selectedGenreLabels = computed(() => {
+                const selected = new Set(genres.value.map((genreId) => genreId.toString()))
+                return genreCatalog
+                    .filter((genreItem) => selected.has(genreItem.id.toString()))
+                    .map((genreItem) => genreItem.name)
+            })
+
+            let noticeTimer = null
+
             // ==== Vue default operations ====
             onMounted(() => {
                 isLoading.value = false
-
                 showGenres.value = genres.value.length === 0
-                showMovieRate.value = (genres.value.length > 0 && userRates.value.length === 0)
+                showMovieRate.value = genres.value.length > 0 && userRates.value.length === 0
             })
 
-            function cleanAll() {
-                if (confirm("Are you sure to delete all records?")) {
-                    document.cookie = "user_genres=; Max-Age=0";
-                    document.cookie = "user_rates=; Max-Age=0";
-                    document.cookie = "user_likes=; Max-Age=0";
-                    reloadPage()
+            function setNotice(message) {
+                actionNotice.value = message
+                if (noticeTimer) {
+                    window.clearTimeout(noticeTimer)
+                }
+                noticeTimer = window.setTimeout(() => {
+                    actionNotice.value = ''
+                }, 2800)
+            }
+
+            function toggleControlPanel() {
+                isControlPanelOpen.value = !isControlPanelOpen.value
+            }
+
+            function closeControlPanel() {
+                isControlPanelOpen.value = false
+            }
+
+            function writeCookieArray(cookieName, values) {
+                if (values.length === 0) {
+                    document.cookie = cookieName + '=; Max-Age=0; path=/'
+                    return
+                }
+                document.cookie = cookieName + '=' + values.join(',') + '; path=/'
+            }
+
+            function persistUserState() {
+                writeCookieArray('user_genres', genres.value)
+                writeCookieArray('user_rates', userRates.value)
+                writeCookieArray('user_likes', userLikes.value)
+            }
+
+            function snapshotState() {
+                return {
+                    genres: [...genres.value],
+                    userRates: [...userRates.value],
+                    userLikes: [...userLikes.value],
+                    requiresRefresh: requiresRefresh.value,
                 }
             }
 
-            // ==== Genre Operation ====
-            const showGenres = ref(false)
-            const genres = ref({{user_genres | tojson}}) // If this place shows error, please check the format: ref({{user_genres | tojson}}) 
+            function pushHistory(actionLabel) {
+                actionHistory.value.push({label: actionLabel, state: snapshotState()})
+                if (actionHistory.value.length > 40) {
+                    actionHistory.value.shift()
+                }
+            }
 
+            function undoLastOperation() {
+                if (actionHistory.value.length === 0) {
+                    setNotice('No action to undo.')
+                    return
+                }
+                const lastAction = actionHistory.value.pop()
+                genres.value = [...lastAction.state.genres]
+                userRates.value = [...lastAction.state.userRates]
+                userLikes.value = [...lastAction.state.userLikes]
+                requiresRefresh.value = Boolean(lastAction.state.requiresRefresh)
+                persistUserState()
+                setNotice('Undo: ' + lastAction.label)
+            }
+
+            function cleanAll() {
+                if (!confirm('Are you sure to delete all records?')) {
+                    return
+                }
+                pushHistory('Clear all data')
+                genres.value = []
+                userRates.value = []
+                userLikes.value = []
+                requiresRefresh.value = false
+                persistUserState()
+
+                if (uiVariant === 'v2') {
+                    showGenres.value = true
+                    showMovieRate.value = false
+                    setNotice('All records are cleared.')
+                    return
+                }
+                reloadPage()
+            }
+
+            // ==== Genre Operation ====
             function updateGenre(_id) {
-                let id = _id.toString()
-                const index = genres.value.indexOf(id);
+                pushHistory('Update selected genres')
+                const id = _id.toString()
+                const index = genres.value.indexOf(id)
                 if (index > -1) {
-                    genres.value.splice(index, 1);
+                    genres.value.splice(index, 1)
                 } else {
-                    genres.value.push(id);
-                    genres.value = genres.value.sort(function (a, b) {
-                        return a - b;
-                    });
+                    genres.value.push(id)
+                    genres.value = genres.value.sort((a, b) => Number(a) - Number(b))
                 }
             }
 
@@ -444,53 +622,72 @@
             }
 
             function saveGenres() {
-                document.cookie = "user_genres=" + genres.value;
-                document.cookie = "user_rates=; Max-Age=0";
+                document.cookie = 'user_genres=' + genres.value.join(',') + '; path=/'
+                document.cookie = 'user_rates=; Max-Age=0; path=/'
                 reloadPage()
             }
 
             // ==== Movie Rate Operation ====
-            const showMovieRate = ref(false)
-            const userRates = ref({{user_rates | tojson}}) // If this place shows error, please check the format: ref({{user_rates | tojson}})
-
             function getRate(movieId) {
                 for (let index in userRates.value) {
-                    let record = userRates.value[index].split('|')
-                    if (parseInt(record[1]) === movieId) {
-                        return [index, record[2]]
+                    const record = userRates.value[index].split('|')
+                    if (parseInt(record[1], 10) === movieId) {
+                        return [index, Number(record[2])]
                     }
                 }
-
                 return [-1, -1]
             }
 
             function updateRate(movieId, rate) {
-                let record = '611' + '|' + movieId + '|' + rate + '|' + '0' //  total 610 users, so the new user id is 944
-
-                const index = getRate(movieId)[0];
+                pushHistory('Rate movie')
+                const record = '611|' + movieId + '|' + rate + '|0'
+                const index = getRate(movieId)[0]
                 if (index > -1) {
-                    userRates.value[index] = record;
+                    userRates.value[index] = record
                 } else {
-                    userRates.value.push(record);
+                    userRates.value.push(record)
                 }
-                document.cookie = "user_rates=" + userRates.value;
+                writeCookieArray('user_rates', userRates.value)
+                requiresRefresh.value = true
+                if (uiVariant === 'v2') {
+                    setNotice('Rating updated.')
+                }
             }
+
+            function saveRatings() {
+                showMovieRate.value = false
+                if (uiVariant === 'v2') {
+                    requiresRefresh.value = false
+                }
+                reloadPage()
+            }
+
+            function openRatingModal() {
+                if (genres.value.length === 0) {
+                    showGenres.value = true
+                    setNotice('Choose genres before rating movies.')
+                    return
+                }
+                showMovieRate.value = true
+            }
+
             // ==== Movie Like Operation ====
-            const userLikes = ref({{user_likes | tojson}}) // If this place shows error, please check the format: ref({{user_likes | tojson}})
-
             function updateLike(_movieId) {
-                let movieId = _movieId.toString()
-                const index = userLikes.value.indexOf(movieId);
+                const movieId = _movieId.toString()
+
+                pushHistory('Toggle like')
+                const index = userLikes.value.indexOf(movieId)
                 if (index > -1) {
-                    userLikes.value.splice(index, 1);
+                    userLikes.value.splice(index, 1)
                 } else {
-                    userLikes.value.push(movieId);
+                    userLikes.value.push(movieId)
                 }
 
-                document.cookie = "user_likes=" + userLikes.value;
-
-                reloadPage();
+                writeCookieArray('user_likes', userLikes.value)
+                requiresRefresh.value = false
+                reloadPage()
             }
+
             function inLikes(movieId) {
                 return userLikes.value.includes(movieId.toString())
             }
@@ -529,9 +726,26 @@
                 return tags
             }
 
+            function startRecommendationFlow() {
+                if (genres.value.length === 0) {
+                    showGenres.value = true
+                    return
+                }
+                if (userRates.value.length === 0) {
+                    showMovieRate.value = true
+                    return
+                }
+
+                const recommendationAnchor = document.getElementById('recommendation-anchor')
+                if (recommendationAnchor) {
+                    recommendationAnchor.scrollIntoView({behavior: 'smooth', block: 'start'})
+                    return
+                }
+                setNotice('Recommendations update automatically after rating and like actions.')
+            }
 
             function reloadPage() {
-                location.reload();
+                location.reload()
             }
 
             return {
@@ -549,12 +763,30 @@
                 userRates,
                 getRate,
                 updateRate,
+                saveRatings,
+                openRatingModal,
 
                 userLikes,
                 updateLike,
                 inLikes,
                 movieScore,
                 movieReasonTags,
+
+                stepOneDone,
+                stepTwoDone,
+                stepThreeDone,
+                completedStepCount,
+                stepProgressPercent,
+                recommendationReady,
+                selectedGenreLabels,
+                canUndo,
+                undoLastOperation,
+                actionNotice,
+                requiresRefresh,
+                isControlPanelOpen,
+                toggleControlPanel,
+                closeControlPanel,
+                startRecommendationFlow,
 
                 reloadPage,
             }
@@ -567,121 +799,346 @@
 
 </script>
 <style>
-    .studio-body {
+    :root {
+        --v2-bg: #1a1f28;
+        --v2-surface: #242c38;
+        --v2-surface-strong: #2e3948;
+        --v2-border: #8fa7b5;
+        --v2-border-soft: #4a5868;
+        --v2-text: #e6e8ea;
+        --v2-muted: #b2b7bf;
+        --v2-accent: #93a784;
+        --v2-hot: #a3786a;
+        --v2-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+        --v2-ring: 0 0 0 1px rgba(143, 167, 181, 0.32);
+    }
+
+    .v2-shell {
         background:
-            radial-gradient(circle at 12% 20%, rgba(197, 86, 21, 0.14), transparent 28%),
-            radial-gradient(circle at 80% 16%, rgba(54, 97, 46, 0.11), transparent 24%),
-            #efe8d4;
-        color: #221c12;
+            radial-gradient(circle at 18% 10%, rgba(163, 120, 106, 0.14), transparent 32%),
+            radial-gradient(circle at 84% 4%, rgba(154, 179, 192, 0.12), transparent 34%),
+            var(--v2-bg);
+        color: var(--v2-text);
     }
 
-    .studio-body .navbar,
-    .studio-body .card,
-    .studio-body .modal-card,
-    .studio-body .footer {
-        border: 1px solid #d8c9a3;
-        border-radius: 14px;
-        background: rgba(255, 249, 236, 0.88);
-        box-shadow: 0 16px 34px rgba(77, 52, 16, 0.12);
-        backdrop-filter: blur(4px);
+    .v2-panel {
+        position: relative;
+        border: 1px solid var(--v2-border-soft);
+        border-radius: 16px;
+        background: linear-gradient(165deg, rgba(23, 33, 65, 0.95), rgba(17, 22, 44, 0.96));
+        box-shadow: var(--v2-shadow), var(--v2-ring);
     }
 
-    .studio-hero {
-        border: 1px solid #ccb889;
-        border-radius: 18px;
-        padding: 1.1rem;
-        background: rgba(255, 248, 230, 0.84);
-        display: grid;
-        gap: 1rem;
-        grid-template-columns: 1.5fr 1fr;
+    .v2-hero {
+        padding: 1.35rem;
+        overflow: hidden;
     }
 
-    .studio-overline {
-        font-family: 'Syne', sans-serif;
-        letter-spacing: 0.08em;
+    .v2-overline {
+        margin: 0 0 0.35rem;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 0.78rem;
+        letter-spacing: 0.16em;
         text-transform: uppercase;
-        font-size: 0.8rem;
-        margin: 0 0 0.25rem;
-        color: #6f6246;
+        color: var(--v2-muted);
     }
 
-    .studio-title {
-        font-family: 'Syne', sans-serif;
-        font-size: clamp(1.4rem, 4vw, 2.2rem);
+    .v2-title {
+        margin: 0;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: clamp(1.55rem, 4vw, 2.7rem);
         line-height: 1.08;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #f5fbff;
+    }
+
+    .v2-copy {
+        margin-top: 0.65rem;
+        color: var(--v2-muted);
+        font-size: 0.95rem;
+    }
+
+    .v2-progress {
+        margin-top: 0.9rem;
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(25, 31, 39, 0.95);
+        border: 1px solid rgba(143, 167, 181, 0.4);
+        overflow: hidden;
+    }
+
+    .v2-progress-bar {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #a3786a, #9ab3c0, #93a784);
+        box-shadow: 0 0 12px rgba(154, 179, 192, 0.38);
+        transition: width 220ms ease;
+    }
+
+    .v2-stepper {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 0.95rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .v2-step-card {
+        border-radius: 12px;
+        border: 1px solid var(--v2-border-soft);
+        background: rgba(10, 16, 31, 0.85);
+        padding: 0.8rem;
+        transition: transform 160ms ease, border-color 160ms ease;
+    }
+
+    .v2-step-card.is-complete {
+        border-color: var(--v2-accent);
+        box-shadow: 0 0 0 1px rgba(147, 167, 132, 0.35), inset 0 0 20px rgba(147, 167, 132, 0.12);
+    }
+
+    .v2-step-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--v2-border);
+    }
+
+    .v2-step-index {
+        margin: 0;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--v2-muted);
+    }
+
+    .v2-step-title {
+        margin: 0.25rem 0 0;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #ecf8ff;
+    }
+
+    .v2-step-meta {
+        margin: 0.25rem 0 0;
+        color: #94c5d8;
+        font-size: 0.86rem;
+    }
+
+    .v2-chip {
+        border-radius: 999px;
+        border: 1px solid rgba(143, 167, 181, 0.55);
+        background: rgba(10, 18, 34, 0.92);
+        color: var(--v2-text);
+        padding: 0.22rem 0.62rem;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 0.82rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .v2-notice {
+        margin-top: 0.85rem;
+        border-radius: 10px;
+        border: 1px solid rgba(163, 120, 106, 0.5);
+        background: rgba(163, 120, 106, 0.12);
+        color: #f2dfd8;
+        padding: 0.62rem 0.75rem;
+        font-size: 0.86rem;
+    }
+
+    .v2-nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.58rem;
+    }
+
+    .v2-nav-actions .button,
+    .v2-nav-actions .tag {
         margin: 0;
     }
 
-    .studio-copy {
-        margin: 0.6rem 0 0;
-        font-family: 'Spectral', serif;
-        color: #5e533f;
+    .v2-nav-pill {
+        min-height: 2rem;
+        padding-left: 0.82rem;
+        padding-right: 0.82rem;
+        border-radius: 10px;
+        letter-spacing: 0.08em;
     }
 
-    .studio-metrics {
+    .v2-nav-pill strong {
+        font-weight: 700;
+    }
+
+    .v2-btn {
+        border-radius: 10px;
+        border: 1px solid rgba(143, 167, 181, 0.45);
+        background: rgba(13, 21, 42, 0.95);
+        color: var(--v2-text);
+        font-family: 'Rajdhani', sans-serif;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        transition: all 160ms ease;
+    }
+
+    .v2-btn:hover {
+        border-color: var(--v2-border);
+        color: #1a1f28;
+        background: #9ab3c0;
+    }
+
+    .v2-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .v2-btn--primary {
+        border-color: rgba(147, 167, 132, 0.75);
+        background: linear-gradient(135deg, rgba(147, 167, 132, 0.9), rgba(154, 179, 192, 0.9));
+        color: #162028;
+        font-weight: 700;
+    }
+
+    .v2-btn--primary:hover {
+        background: linear-gradient(135deg, #9eb091, #a7bbc7);
+        color: #161d25;
+    }
+
+    .v2-btn--accent {
+        border-color: rgba(163, 120, 106, 0.6);
+        background: rgba(163, 120, 106, 0.14);
+        color: #f2dfd8;
+    }
+
+    .v2-btn--accent:hover {
+        border-color: rgba(163, 120, 106, 0.9);
+        background: rgba(163, 120, 106, 0.9);
+        color: #2a1710;
+    }
+
+    .v2-btn--danger {
+        border-color: rgba(163, 120, 106, 0.6);
+        background: rgba(78, 55, 49, 0.84);
+        color: #f0e0da;
+    }
+
+    .v2-btn--danger:hover {
+        border-color: rgba(163, 120, 106, 0.95);
+        background: rgba(163, 120, 106, 0.95);
+        color: #22120d;
+    }
+
+    .v2-control-center {
+        position: fixed;
+        top: 0;
+        right: 0;
+        z-index: 60;
+        width: min(22rem, 92vw);
+        height: 100dvh;
+        border-radius: 14px 0 0 14px;
+        border: 1px solid var(--v2-border-soft);
+        background: linear-gradient(160deg, rgba(22, 30, 57, 0.97), rgba(12, 18, 34, 0.97));
+        box-shadow: var(--v2-shadow), var(--v2-ring);
+        padding: 0.9rem;
+        transform: translateX(110%);
+        transition: transform 220ms ease;
+        overflow-y: auto;
+    }
+
+    .v2-control-center.is-open {
+        transform: translateX(0);
+    }
+
+    .v2-control-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 55;
+        background: rgba(2, 6, 16, 0.55);
+        backdrop-filter: blur(2px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+    }
+
+    .v2-control-backdrop.is-active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .v2-control-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        margin-bottom: 0.45rem;
+    }
+
+    .v2-control-summary {
+        border: 1px solid rgba(143, 167, 181, 0.38);
+        border-radius: 10px;
+        background: rgba(10, 18, 34, 0.68);
+        padding: 0.55rem 0.65rem;
+        margin-bottom: 0.65rem;
+    }
+
+    .v2-control-summary-title {
+        margin: 0;
+        color: #e8f9ff;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 0.92rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .v2-control-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.32rem;
+    }
+
+    .v2-panel-close {
+        width: 2.15rem;
+        min-width: 2.15rem;
+        height: 2.15rem;
+        padding: 0;
+    }
+
+    .v2-control-grid {
         display: grid;
-        gap: 0.55rem;
+        gap: 0.45rem;
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .metric-card {
-        border: 1px dashed #b9a273;
-        border-radius: 10px;
-        padding: 0.45rem 0.55rem;
-        background: rgba(255, 251, 240, 0.94);
-    }
-
-    .metric-card p {
-        margin: 0;
-        font-size: 0.75rem;
-        color: #6a5b40;
-    }
-
-    .metric-card strong {
-        font-family: 'Syne', sans-serif;
-        font-size: 1.2rem;
-    }
-
-    .studio-score {
-        margin-top: 0.35rem;
-        font-family: 'Syne', sans-serif;
-        font-size: 0.74rem;
-        color: #8f3a07;
-    }
-
-    .studio-reasons {
+    .v2-kpi {
+        border: 1px dashed rgba(52, 216, 255, 0.35);
+        border-radius: 8px;
+        background: rgba(7, 14, 27, 0.85);
+        padding: 0.42rem 0.5rem;
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem;
-        margin-top: 0.3rem;
+        flex-direction: column;
+        gap: 0.18rem;
     }
 
-    .studio-reason-chip {
-        font-family: 'Syne', sans-serif;
-        font-size: 0.68rem;
-        border-radius: 999px;
-        border: 1px solid #b9a98a;
-        padding: 0.12rem 0.42rem;
-        background: #fffaf0;
+    .v2-kpi span {
+        color: var(--v2-muted);
+        font-size: 0.73rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
     }
 
-    .reveal {
-        opacity: 0;
-        transform: translateY(10px);
-        animation: studio-rise 520ms ease-out forwards;
-    }
-
-    @keyframes studio-rise {
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    .v2-kpi strong {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.05rem;
+        color: #e8f9ff;
     }
 
     .modal-content, .modal-card {
         width: calc(100% - 4em);
+    }
 
-        @media screen and (min-width: 1022px) {
+    @media screen and (min-width: 1022px) {
+        .modal-content, .modal-card {
             width: 1022px;
         }
     }
@@ -708,8 +1165,15 @@
         cursor: pointer;
     }
 
+    @media screen and (max-width: 1023px) {
+        .v2-control-center {
+            width: min(24rem, 100vw);
+            border-radius: 0;
+        }
+    }
+
     @media screen and (max-width: 768px) {
-        .studio-hero {
+        .v2-stepper {
             grid-template-columns: 1fr;
         }
     }

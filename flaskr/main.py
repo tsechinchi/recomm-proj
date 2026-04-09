@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import unquote
 
 import pandas as pd
 from flask import (
@@ -85,21 +86,9 @@ def index():
             participant_id=participant_id,
         )
     default_genres = genres.to_dict('records')
-    user_genres = request.cookies.get('user_genres')
-    if user_genres:
-        user_genres = user_genres.split(",")
-    else:
-        user_genres = []
-    user_rates = request.cookies.get('user_rates')
-    if user_rates:
-        user_rates = user_rates.split(",")
-    else:
-        user_rates = []
-    user_likes = request.cookies.get('user_likes')
-    if user_likes:
-        user_likes = user_likes.split(",")
-    else:
-        user_likes = []
+    user_genres = _parse_cookie_list('user_genres')
+    user_rates = _parse_cookie_list('user_rates')
+    user_likes = _parse_cookie_list('user_likes')
     if variant == 'A':
         default_genres_movies = original_system.getMoviesByGenres(user_genres)[:10]
         recommendations_movies, recommendations_message = original_system.getRecommendationBy(user_rates)
@@ -177,6 +166,14 @@ def _get_ui_variant():
     if requested_ui in {'classic', 'v2'}:
         return requested_ui
     return 'classic'
+
+
+def _parse_cookie_list(cookie_name):
+    raw_value = request.cookies.get(cookie_name, '')
+    if not raw_value:
+        return []
+    decoded_value = unquote(raw_value)
+    return [item for item in decoded_value.split(',') if item]
 
 
 def _ab_log_path():
