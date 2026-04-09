@@ -552,20 +552,6 @@
                             <li v-for="detail in activeWhyExplanation.details" :key="detail">[[ detail ]]</li>
                         </ul>
 
-                        <div class="v2-signal-grid" v-if="activeWhyExplanation.signals">
-                            <div class="v2-kpi">
-                                <span>Collaborative</span>
-                                <strong>[[ ((activeWhyExplanation.signals.collaborative || 0) * 100).toFixed(0) ]]%</strong>
-                            </div>
-                            <div class="v2-kpi">
-                                <span>Semantic</span>
-                                <strong>[[ ((activeWhyExplanation.signals.semantic || 0) * 100).toFixed(0) ]]%</strong>
-                            </div>
-                            <div class="v2-kpi">
-                                <span>Feedback Shift</span>
-                                <strong>[[ (activeWhyExplanation.signals.feedback_adjustment || 0).toFixed(3) ]]</strong>
-                            </div>
-                        </div>
                     </template>
                     <p v-else class="text-sm text-tokenMuted">Explanation is not available for this movie yet.</p>
                 </div>
@@ -1618,12 +1604,6 @@
         padding: 0.7rem;
     }
 
-    .v2-signal-grid {
-        display: grid;
-        gap: 0.45rem;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
     .modal-content, .modal-card {
         width: calc(100% - 4em);
     }
@@ -1669,8 +1649,7 @@
         }
 
         .v2-dashboard-grid,
-        .v2-loop-grid,
-        .v2-signal-grid {
+        .v2-loop-grid {
             grid-template-columns: 1fr;
         }
 
