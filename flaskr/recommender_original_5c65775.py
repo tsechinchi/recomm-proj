@@ -1,16 +1,9 @@
 import re
-import json
-from datetime import datetime, timezone
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from flask import (
-    Blueprint, current_app, jsonify, make_response, render_template, render_template_string, request
-)
 
 from .tools.data_tool import *
-from . import recommender_original_5c65775 as original_system
 
 try:
     from gensim.models import Word2Vec
@@ -24,219 +17,10 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-bp = Blueprint('main', __name__, url_prefix='/')
-
 _MOVIE_EMBEDDING_CACHE = None
 _MOVIE_TIME_CACHE = None
 
-
-def main():
-    from flaskr import create_app
-    app = create_app()
-    app.run(debug=True)
-
 movies, genres, rates = loadData()
-
-
-@bp.route('/', methods=('GET', 'POST'))
-def index():
-    participant_id = request.args.get('participant_id', '').strip()
-    variant = _get_ab_variant()
-    if variant is None:
-        return render_template_string(
-            """
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="utf-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>Choose Test Route</title>
-                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-            </head>
-            <body>
-                <section class="hero is-fullheight is-light">
-                    <div class="hero-body">
-                        <div class="container" style="max-width: 720px;">
-                            <div class="box">
-                                <h1 class="title">Choose a Test Route</h1>
-                                <p class="subtitle">Select which system version this participant should use for the algorithm A/B test.</p>
-                                <form method="get" action="/">
-                                    <div class="field">
-                                        <label class="label" for="participant_id">Participant ID</label>
-                                        <div class="control">
-                                            <input class="input" id="participant_id" name="participant_id" value="{{ participant_id }}" placeholder="e.g. user01">
-                                        </div>
-                                    </div>
-                                    <div class="buttons">
-                                        <button class="button is-link" type="submit" name="variant" value="A">Route A: Original</button>
-                                        <button class="button is-primary" type="submit" name="variant" value="B">Route B: Enhanced</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </body>
-            </html>
-            """,
-            participant_id=participant_id,
-        )
-    default_genres = genres.to_dict('records')
-    user_genres = request.cookies.get('user_genres')
-    if user_genres:
-        user_genres = user_genres.split(",")
-    else:
-        user_genres = []
-    user_rates = request.cookies.get('user_rates')
-    if user_rates:
-        user_rates = user_rates.split(",")
-    else:
-        user_rates = []
-    user_likes = request.cookies.get('user_likes')
-    if user_likes:
-        user_likes = user_likes.split(",")
-    else:
-        user_likes = []
-    if variant == 'A':
-        default_genres_movies = original_system.getMoviesByGenres(user_genres)[:10]
-        recommendations_movies, recommendations_message = original_system.getRecommendationBy(user_rates)
-        likes_similar_movies, likes_similar_message = original_system.getLikedSimilarBy(
-            [int(numeric_string) for numeric_string in user_likes]
-        )
-        likes_movies = original_system.getUserLikesBy(user_likes)
-    else:
-        default_genres_movies = getMoviesByGenres(user_genres)[:10]
-        recommendations_movies, recommendations_message = getRecommendationBy(user_rates)
-        likes_similar_movies, likes_similar_message = getLikedSimilarBy([int(numeric_string) for numeric_string in user_likes])
-        likes_movies = getUserLikesBy(user_likes)
-
-    response = make_response(render_template('index.html',
-                                             genres=default_genres,
-                                             user_genres=user_genres,
-                                             user_rates=user_rates,
-                                             user_likes=user_likes,
-                                             default_genres_movies=default_genres_movies,
-                                             recommendations=recommendations_movies,
-                                             recommendations_message=recommendations_message,
-                                             likes_similars=likes_similar_movies,
-                                             likes_similar_message=likes_similar_message,
-                                             likes=likes_movies,
-                                             ab_variant=variant,
-                                             participant_id=participant_id,
-                                             ))
-    _log_ab_event(
-        participant_id,
-        variant,
-        user_genres,
-        user_rates,
-        user_likes,
-        recommendations_movies,
-        likes_similar_movies,
-    )
-    return response
-
-
-@bp.route('/ab-summary', methods=('GET',))
-def ab_summary():
-    summary = _build_ab_summary()
-    return jsonify(summary)
-
-
-def _get_ab_variant():
-    forced_variant = request.args.get('variant', '').upper()
-    if forced_variant in {'A', 'B'}:
-        return forced_variant
-    return None
-
-
-def _ab_log_path():
-    log_dir = Path(current_app.root_path).parent / 'ab_test_logs'
-    log_dir.mkdir(parents=True, exist_ok=True)
-    return log_dir / 'ab_test_events.jsonl'
-
-
-def _log_ab_event(participant_id, variant, user_genres, user_rates, user_likes, recommendations, likes_similars):
-    log_path = _ab_log_path()
-    liked_movie_ids = [int(movie_id) for movie_id in user_likes]
-    recommendation_ids = [movie['movieId'] for movie in recommendations]
-    event = {
-        'timestamp': datetime.now(timezone.utc).isoformat(),
-        'participant_id': participant_id,
-        'variant': variant,
-        'genres_count': len(user_genres),
-        'ratings_count': len(user_rates),
-        'likes_count': len(user_likes),
-        'user_like_ids': liked_movie_ids,
-        'recommendation_ids': recommendation_ids,
-        'similar_like_ids': [movie['movieId'] for movie in likes_similars],
-        'liked_recommendation_count': len(set(liked_movie_ids).intersection(recommendation_ids)),
-    }
-    with log_path.open('a', encoding='utf-8') as file_handle:
-        file_handle.write(json.dumps(event) + '\n')
-
-
-def _build_ab_summary():
-    log_path = _ab_log_path()
-    summary = {
-        'A': {
-            'page_views': 0,
-            'unique_participants': 0,
-            'avg_ratings': 0.0,
-            'avg_likes': 0.0,
-            'recommendation_hit_rate': 0.0,
-            'recommendation_like_rate': 0.0,
-        },
-        'B': {
-            'page_views': 0,
-            'unique_participants': 0,
-            'avg_ratings': 0.0,
-            'avg_likes': 0.0,
-            'recommendation_hit_rate': 0.0,
-            'recommendation_like_rate': 0.0,
-        },
-    }
-
-    if not log_path.exists():
-        return summary
-
-    participants = {'A': set(), 'B': set()}
-    recommendation_hits = {'A': 0, 'B': 0}
-    recommendation_slots = {'A': 0, 'B': 0}
-
-    with log_path.open('r', encoding='utf-8') as file_handle:
-        for raw_line in file_handle:
-            raw_line = raw_line.strip()
-            if not raw_line:
-                continue
-            event = json.loads(raw_line)
-            variant = event.get('variant')
-            if variant not in summary:
-                continue
-            summary[variant]['page_views'] += 1
-            summary[variant]['avg_ratings'] += event.get('ratings_count', 0)
-            summary[variant]['avg_likes'] += event.get('likes_count', 0)
-            liked_recommendation_count = event.get('liked_recommendation_count', 0)
-            recommendation_ids = event.get('recommendation_ids', [])
-            recommendation_hits[variant] += 1 if liked_recommendation_count > 0 else 0
-            recommendation_slots[variant] += len(recommendation_ids)
-            summary[variant]['recommendation_like_rate'] += liked_recommendation_count
-            participant_id = event.get('participant_id')
-            if participant_id:
-                participants[variant].add(participant_id)
-
-    for variant_name, variant in summary.items():
-        variant['unique_participants'] = len(participants[variant_name])
-        if variant['page_views'] == 0:
-            continue
-        variant['avg_ratings'] /= float(variant['page_views'])
-        variant['avg_likes'] /= float(variant['page_views'])
-        variant['recommendation_hit_rate'] = recommendation_hits[variant_name] / float(variant['page_views'])
-        if recommendation_slots[variant_name] > 0:
-            variant['recommendation_like_rate'] /= float(recommendation_slots[variant_name])
-        else:
-            variant['recommendation_like_rate'] = 0.0
-
-    return summary
 
 
 def getUserLikesBy(user_likes):
@@ -256,34 +40,32 @@ def getUserLikesBy(user_likes):
         results = original_orders
 
     if len(results) > 0:
-        return results.to_dict('records') # type: ignore
+        return results.to_dict('records')  # type: ignore
     return results
+
 
 def is_genre_match(movie_genres, interested_genres):
     return bool(set(movie_genres).intersection(set(interested_genres)))
+
 
 def getMoviesByGenres(user_genres):
     results = []
     if len(user_genres) > 0:
         genres_mask = genres['id'].isin([int(id) for id in user_genres])
         user_genres = [1 if has is True else 0 for has in genres_mask]
-        user_genres_df = pd.DataFrame(user_genres,columns=['value'])
+        user_genres_df = pd.DataFrame(user_genres, columns=['value'])
         user_genres_df = pd.concat([user_genres_df, genres['name']], axis=1)
         interested_genres = user_genres_df[user_genres_df['value'] == 1]['name'].tolist()
         results = movies[movies['genres'].apply(lambda x: is_genre_match(x, interested_genres))]
 
     if len(results) > 0:
-        return results.to_dict('records') # type: ignore
+        return results.to_dict('records')  # type: ignore
     return results
 
-# Modify this function
+
 def getRecommendationBy(user_rates):
-    global movies, rates, _MOVIE_EMBEDDING_CACHE, _MOVIE_TIME_CACHE
     results = []
     if len(user_rates) > 0:
-        movies, _, rates = loadData()
-        _MOVIE_EMBEDDING_CACHE = None
-        _MOVIE_TIME_CACHE = None
         reader = Reader(rating_scale=(0.5, 5.0))
         algo = SVDpp(
             n_factors=80,
@@ -335,19 +117,13 @@ def getRecommendationBy(user_rates):
             results = result_frame.sort_values(by=['final_score'], ascending=False).head(12)
 
     if len(results) > 0:
-        return results.to_dict('records'), "These movies are recommended by an SVD++ + semantic + time-aware hybrid."  # type: ignore
+        return results.to_dict('records'), "These movies are recommended by a TimeSVD++ + Word2Vec hybrid."  # type: ignore
     return results, "No recommendations."
 
 
-
-# Modify this function
 def getLikedSimilarBy(user_likes):
-    global movies, rates, _MOVIE_EMBEDDING_CACHE, _MOVIE_TIME_CACHE
     results = []
     if len(user_likes) > 0:
-        movies, _, rates = loadData()
-        _MOVIE_EMBEDDING_CACHE = None
-        _MOVIE_TIME_CACHE = None
         embedding_cache = _get_movie_embedding_cache()
         movie_vectors = embedding_cache['vectors']
         movie_id_to_index = embedding_cache['movie_id_to_index']
@@ -362,11 +138,10 @@ def getLikedSimilarBy(user_likes):
                 12,
             )
     if len(results) > 0:
-        return results.to_dict('records'), "The movies are similar to your liked movies based on semantic text embeddings." # type: ignore
+        return results.to_dict('records'), "The movies are similar to your liked movies."  # type: ignore
     return results, "No similar movies found."
 
 
-# Step 1: Representing items with multi-hot vectors
 def item_representation_based_movie_genres(movies_df):
     movies_with_genres = movies_df.copy(deep=True)
     genre_list = []
@@ -379,24 +154,25 @@ def item_representation_based_movie_genres(movies_df):
     movies_with_genres = movies_with_genres.fillna(0)
 
     movies_genre_matrix = movies_with_genres[genre_list].to_numpy()
-    
+
     return movies_genre_matrix, movies_with_genres, genre_list
 
-# Step 2: Building user profile
+
 def build_user_profile(movieIds, item_rep_vector, feature_list, weighted=True, normalized=True):
     user_movie_rating_df = item_rep_vector[item_rep_vector['movieId'].isin(movieIds)]
     user_movie_df = user_movie_rating_df[feature_list].mean()
     user_profile = user_movie_df.T
-    
+
     if normalized:
         user_profile = user_profile / sum(user_profile.values)
-        
+
     return user_profile
-# Step 3: Predicting user preference for items
-def generate_recommendation_results(user_profile,item_rep_matrix, movies_data, k=12):
+
+
+def generate_recommendation_results(user_profile, item_rep_matrix, movies_data, k=12):
     u_v = user_profile.values
-    u_v_matrix =  [u_v]
-    recommendation_table =  cosine_similarity(u_v_matrix,item_rep_matrix) # type: ignore
+    u_v_matrix = [u_v]
+    recommendation_table = cosine_similarity(u_v_matrix, item_rep_matrix)  # type: ignore
     recommendation_table_df = movies_data.copy(deep=True)
     recommendation_table_df['similarity'] = recommendation_table[0]
     rec_result = recommendation_table_df.sort_values(by=['similarity'], ascending=False)[:k]
