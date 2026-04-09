@@ -19,15 +19,15 @@ except ImportError:  # pragma: no cover - optional dependency
 
 from surprise import Dataset
 from surprise import Reader
-from surprise import SVDpp
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from .timesvdpp import TimeSVDpp
+
 bp = Blueprint('main', __name__, url_prefix='/')
 
 _MOVIE_EMBEDDING_CACHE = None
-_MOVIE_TIME_CACHE = None
 
 
 def main():
@@ -278,33 +278,53 @@ def getMoviesByGenres(user_genres):
 
 # Modify this function
 def getRecommendationBy(user_rates):
-    global movies, rates, _MOVIE_EMBEDDING_CACHE, _MOVIE_TIME_CACHE
+    global movies, rates, _MOVIE_EMBEDDING_CACHE
     results = []
     if len(user_rates) > 0:
         movies, _, rates = loadData()
         _MOVIE_EMBEDDING_CACHE = None
-        _MOVIE_TIME_CACHE = None
         reader = Reader(rating_scale=(0.5, 5.0))
-        algo = SVDpp(
+        algo = TimeSVDpp(
             n_factors=80,
             n_epochs=20,
-            lr_all=0.005,
-            reg_all=0.02,
+            lr_all=0.0005,
+            reg_all=0.05,
+            n_bins=10,
+            beta=0.5,
             random_state=42,
         )
         user_rates = ratesFromUser(user_rates)
-        training_rates = pd.concat([rates[['userId', 'movieId', 'rating']], user_rates], ignore_index=True)
-        training_data = Dataset.load_from_df(training_rates, reader=reader)
-        trainset = training_data.build_full_trainset()
-        algo.fit(trainset)
+        synthetic_user_id = int(rates["userId"].max()) + 1 if len(rates) > 0 else 1
+        user_rates = user_rates.copy(deep=True)
+        user_rates["userId"] = synthetic_user_id
+        if len(rates) > 0:
+            base_timestamp = int(rates['timestamp'].max()) + 1
+        else:
+            base_timestamp = int(datetime.now(timezone.utc).timestamp())
+        user_rates['timestamp'] = [base_timestamp + index for index in range(len(user_rates))]
 
-        user_id = int(user_rates['userId'].iloc[0])
+        training_rates = pd.concat(
+            [
+                rates[['userId', 'movieId', 'rating', 'timestamp']],
+                user_rates[['userId', 'movieId', 'rating', 'timestamp']],
+            ],
+            ignore_index=True,
+        )
+        training_data = Dataset.load_from_df(training_rates[['userId', 'movieId', 'rating']], reader=reader)
+        trainset = training_data.build_full_trainset()
+        timestamps = {
+            (int(row.userId), int(row.movieId)): float(row.timestamp)
+            for row in training_rates.itertuples(index=False)
+        }
+        algo.fit(trainset, timestamps=timestamps)
+
+        user_id = synthetic_user_id
         rated_movie_ids = set(user_rates[user_rates['userId'] == user_id]['movieId'].tolist())
+        prediction_timestamp = float(training_rates['timestamp'].max())
 
         embedding_cache = _get_movie_embedding_cache()
         movie_vectors = embedding_cache['vectors']
         movie_id_to_index = embedding_cache['movie_id_to_index']
-        time_scores = _get_movie_time_scores()
         user_profile = _build_user_profile_from_ratings(user_rates, movie_vectors, movie_id_to_index)
 
         candidate_movie_ids = []
@@ -315,39 +335,34 @@ def getRecommendationBy(user_rates):
             if movie_id in rated_movie_ids:
                 continue
             candidate_movie_ids.append(movie_id)
-            cf_scores.append(algo.predict(user_id, movie_id).est)
+            cf_scores.append(algo.predict(user_id, movie_id, timestamp=prediction_timestamp).est)
             movie_index = movie_id_to_index.get(movie_id)
             semantic_scores.append(0.0 if user_profile is None or movie_index is None else float(np.dot(user_profile, movie_vectors[movie_index])))
 
         if candidate_movie_ids:
-            candidate_indices = [movie_id_to_index[movie_id] for movie_id in candidate_movie_ids]
-            time_candidate_scores = time_scores[candidate_indices]
             cf_scores = _minmax_scale(cf_scores)
             semantic_scores = _minmax_scale(semantic_scores)
-            time_candidate_scores = _minmax_scale(time_candidate_scores)
 
             result_frame = movies[movies['movieId'].isin(candidate_movie_ids)].copy(deep=True)
             result_frame['final_score'] = (
-                0.65 * cf_scores
+                0.75 * cf_scores
                 + 0.25 * semantic_scores
-                + 0.10 * time_candidate_scores
             )
             results = result_frame.sort_values(by=['final_score'], ascending=False).head(12)
 
     if len(results) > 0:
-        return results.to_dict('records'), "These movies are recommended by an SVD++ + semantic + time-aware hybrid."  # type: ignore
+        return results.to_dict('records'), "These movies are recommended by a TimeSVD++ + semantic hybrid."  # type: ignore
     return results, "No recommendations."
 
 
 
 # Modify this function
 def getLikedSimilarBy(user_likes):
-    global movies, rates, _MOVIE_EMBEDDING_CACHE, _MOVIE_TIME_CACHE
+    global movies, rates, _MOVIE_EMBEDDING_CACHE
     results = []
     if len(user_likes) > 0:
         movies, _, rates = loadData()
         _MOVIE_EMBEDDING_CACHE = None
-        _MOVIE_TIME_CACHE = None
         embedding_cache = _get_movie_embedding_cache()
         movie_vectors = embedding_cache['vectors']
         movie_id_to_index = embedding_cache['movie_id_to_index']
@@ -550,19 +565,3 @@ def _semantic_recommendation_results(user_profile, movie_vectors, liked_movie_id
     score_map = {movie_id: score for movie_id, score in zip(filtered_movie_ids, filtered_scores)}
     result_frame['similarity'] = result_frame['movieId'].map(score_map)
     return result_frame.sort_values(by=['similarity'], ascending=False).head(k)
-
-
-def _get_movie_time_scores():
-    global _MOVIE_TIME_CACHE
-    if _MOVIE_TIME_CACHE is not None:
-        return _MOVIE_TIME_CACHE
-
-    movie_last_rating = rates.groupby('movieId')['timestamp'].max()
-    aligned = movie_last_rating.reindex(movies['movieId']).fillna(movie_last_rating.min())
-    min_value = float(movie_last_rating.min())
-    max_value = float(movie_last_rating.max())
-    if np.isclose(min_value, max_value):
-        _MOVIE_TIME_CACHE = np.zeros(len(movies), dtype=float)
-    else:
-        _MOVIE_TIME_CACHE = ((aligned.astype(float) - min_value) / (max_value - min_value)).to_numpy(dtype=float)
-    return _MOVIE_TIME_CACHE

@@ -62,3 +62,14 @@ timestamp = 1717665888
 dt_str = pd.to_datetime(timestamp, unit='s').strftime('%Y-%m-%d %H:%M:%S')
 print(dt_str)
 ```
+
+## MovieLens 1M (Recommended for denser data)
+
+The data loader now auto-detects MovieLens 1M if these files exist:
+
+- `./flaskr/static/ml_data/ml-1m/movies.dat`
+- `./flaskr/static/ml_data/ml-1m/ratings.dat`
+
+When present, the app uses MovieLens 1M directly; otherwise it falls back to the legacy CSV files in `./flaskr/static/ml_data/`.
+
+Expected source: MovieLens 1M from GroupLens.

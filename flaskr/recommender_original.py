@@ -98,8 +98,17 @@ def getRecommendationBy(user_rates):
         algo = KNNWithMeans(sim_options={'name': 'pearson', 'user_based': True})
         # Convert the user's ratings (stored in "user_rates") to the Dataset format
         user_rates = ratesFromUser(user_rates)
+        synthetic_user_id = int(rates["userId"].max()) + 1 if len(rates) > 0 else 1
+        user_rates = user_rates.copy(deep=True)
+        user_rates["userId"] = synthetic_user_id
         # Add the user’s rating information into the Movielens dataset
-        training_rates = pd.concat([rates, user_rates], ignore_index=True)
+        training_rates = pd.concat(
+            [
+                rates[["userId", "movieId", "rating"]],
+                user_rates[["userId", "movieId", "rating"]],
+            ],
+            ignore_index=True,
+        )
         # Load the combined data as a training dataset 
         training_data = Dataset.load_from_df(training_rates, reader=reader)
         # Build a full training set from the dataset
@@ -107,8 +116,8 @@ def getRecommendationBy(user_rates):
         # Fit the algorithm using the trainset
         algo.fit(trainset)
         all_movie_ids = movies['movieId'].unique()
-        # Predict ratings for all movies for the specified user (assuming user ID 611)
-        user_id = 611 
+        # Predict ratings for all movies for the synthetic current-session user.
+        user_id = synthetic_user_id
         rated_movie_ids = user_rates[user_rates['userId'] == user_id]['movieId'].tolist()
         predictions = [algo.predict(user_id, movie_id) for movie_id in all_movie_ids if movie_id not in rated_movie_ids]
         top_predictions = [pred for pred in predictions]

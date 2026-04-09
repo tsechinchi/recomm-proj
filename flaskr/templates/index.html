@@ -72,7 +72,7 @@
                             <div class="card">
                                 <div class="card-image">
                                     <figure class="image is-4by3">
-                                        <img src="{{ movie['cover_url'] }}"
+                                        <img src="{{ movie.get('cover_url') or 'https://placehold.co/480x640?text=No+Cover' }}"
                                              onerror="this.src='https://placehold.co/480x640?text=No+Cover';"
                                              alt="">
                                     </figure>
@@ -82,7 +82,7 @@
                                         <div class="media-content">
                                             <p style="font-size: 0.8rem; font-weight: bold">{{ movie['title']
                                                 }}</p>
-                                            <p style="font-size: 0.8rem">{{ movie['release_date'] }}</p>
+                                            <p style="font-size: 0.8rem">{{ movie.get('release_date', movie.get('year', '')) }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -114,7 +114,7 @@
                             <div class="card">
                                 <div class="card-image">
                                     <figure class="image is-3by4">
-                                        <img src="{{ movie['cover_url'] }}"
+                                        <img src="{{ movie.get('cover_url') or 'https://placehold.co/480x640?text=No+Cover' }}"
                                              onerror="this.src='https://placehold.co/480x640?text=No+Cover';"
                                              alt="">
                                     </figure>
@@ -124,7 +124,7 @@
                                         <div class="media-content">
                                             <p style="font-size: 0.8rem; font-weight: bold">{{ movie['title']
                                                 }}</p>
-                                            <p style="font-size: 0.8rem">{{ movie['release_date'] }}</p>
+                                            <p style="font-size: 0.8rem">{{ movie.get('release_date', movie.get('year', '')) }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -155,7 +155,7 @@
                             <div class="card">
                                 <div class="card-image">
                                     <figure class="image is-3by4">
-                                        <img src="{{ movie['cover_url'] }}"
+                                        <img src="{{ movie.get('cover_url') or 'https://placehold.co/480x640?text=No+Cover' }}"
                                              onerror="this.src='https://placehold.co/480x640?text=No+Cover';"
                                              alt="">
                                     </figure>
@@ -165,7 +165,7 @@
                                         <div class="media-content">
                                             <p style="font-size: 0.8rem; font-weight: bold">{{ movie['title']
                                                 }}</p>
-                                            <p style="font-size: 0.8rem">{{ movie['release_date'] }}</p>
+                                            <p style="font-size: 0.8rem">{{ movie.get('release_date', movie.get('year', '')) }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -219,7 +219,7 @@
                             <div class="card">
                                 <div class="card-image">
                                     <figure class="image is-3by4">
-                                        <img src="{{ movie['cover_url'] }}"
+                                        <img src="{{ movie.get('cover_url') or 'https://placehold.co/480x640?text=No+Cover' }}"
                                              onerror="this.src='https://placehold.co/480x640?text=No+Cover';" alt="">
                                     </figure>
                                 </div>
@@ -228,7 +228,7 @@
                                         <div class="media-content">
                                             <p style="font-size: 0.8rem; font-weight: bold">{{ movie['title']
                                                 }}</p>
-                                            <p style="font-size: 0.8rem">{{ movie['release_date'] }}</p>
+                                            <p style="font-size: 0.8rem">{{ movie.get('release_date', movie.get('year', '')) }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -338,7 +338,7 @@
             }
 
             function updateRate(movieId, rate) {
-                let record = '611' + '|' + movieId + '|' + rate + '|' + '0' //  total 610 users, so the new user id is 944
+                let record = '611' + '|' + movieId + '|' + rate + '|' + '0' // Backend remaps this temporary user id to a synthetic unseen id.
 
                 const index = getRate(movieId)[0];
                 if (index > -1) {

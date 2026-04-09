@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from surprise import Dataset
 from surprise import Reader
-from surprise import SVDpp
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -16,6 +15,7 @@ except ImportError:  # pragma: no cover - optional dependency
     Word2Vec = None
 
 from flaskr.evaluation import evaluate_ranking_batch
+from flaskr.timesvdpp import TimeSVDpp
 from flaskr.tools.data_tool import loadData
 
 
@@ -107,16 +107,6 @@ def build_user_profile(user_history, movie_vectors, movie_id_to_index):
     return profile / norm
 
 
-def build_time_prior(train_ratings, movies):
-    movie_last_rating = train_ratings.groupby("movieId")["timestamp"].max()
-    aligned = movie_last_rating.reindex(movies["movieId"]).fillna(movie_last_rating.min())
-    min_value = float(movie_last_rating.min())
-    max_value = float(movie_last_rating.max())
-    if np.isclose(min_value, max_value):
-        return np.zeros(len(movies), dtype=float)
-    return ((aligned.astype(float) - min_value) / (max_value - min_value)).to_numpy(dtype=float)
-
-
 def temporal_holdout_split(ratings):
     train_parts = []
     eval_users = []
@@ -152,18 +142,15 @@ def temporal_holdout_split(ratings):
     return train_ratings, eval_users
 
 
-def recommend_for_user(user_id, user_history, train_ratings, movies, movie_vectors, movie_id_to_index, time_prior):
-    reader = Reader(rating_scale=(0.5, 5.0))
-    train_df = train_ratings[["userId", "movieId", "rating"]]
-    surprise_data = Dataset.load_from_df(train_df, reader=reader)
-    algo = SVDpp(
-        n_factors=80,
-        n_epochs=20,
-        lr_all=0.005,
-        reg_all=0.02,
-        random_state=42,
-    )
-    algo.fit(surprise_data.build_full_trainset())
+def recommend_for_user(
+    user_id,
+    user_history,
+    movies,
+    movie_vectors,
+    movie_id_to_index,
+    algo,
+    prediction_timestamp,
+):
 
     seen_movie_ids = set(user_history["movieId"].astype(int).tolist())
     user_profile = build_user_profile(user_history, movie_vectors, movie_id_to_index)
@@ -176,19 +163,15 @@ def recommend_for_user(user_id, user_history, train_ratings, movies, movie_vecto
         if movie_id in seen_movie_ids:
             continue
         candidate_movie_ids.append(movie_id)
-        collaborative_scores.append(algo.predict(user_id, movie_id).est)
+        collaborative_scores.append(algo.predict(user_id, movie_id, timestamp=prediction_timestamp).est)
         movie_index = movie_id_to_index.get(movie_id)
         semantic_scores.append(
             0.0 if user_profile is None or movie_index is None else float(np.dot(user_profile, movie_vectors[movie_index]))
         )
 
-    candidate_indices = [movie_id_to_index[movie_id] for movie_id in candidate_movie_ids]
-    time_scores = time_prior[candidate_indices]
-
     final_scores = (
-        0.65 * minmax_scale(collaborative_scores)
+        0.75 * minmax_scale(collaborative_scores)
         + 0.25 * minmax_scale(semantic_scores)
-        + 0.10 * minmax_scale(time_scores)
     )
 
     ranked_indices = np.argsort(final_scores)[::-1][:TOP_K]
@@ -199,9 +182,28 @@ def run_evaluation():
     movies, _, ratings = loadData()
     train_ratings, eval_users = temporal_holdout_split(ratings)
 
+    reader = Reader(rating_scale=(0.5, 5.0))
+    train_df = train_ratings[["userId", "movieId", "rating"]]
+    surprise_data = Dataset.load_from_df(train_df, reader=reader)
+    algo = TimeSVDpp(
+        n_factors=80,
+        n_epochs=20,
+        lr_all=0.0005,
+        reg_all=0.05,
+        n_bins=10,
+        beta=0.5,
+        random_state=42,
+    )
+    trainset = surprise_data.build_full_trainset()
+    timestamps = {
+        (int(row.userId), int(row.movieId)): float(row.timestamp)
+        for row in train_ratings[["userId", "movieId", "timestamp"]].itertuples(index=False)
+    }
+    algo.fit(trainset, timestamps=timestamps)
+    prediction_timestamp = float(train_ratings["timestamp"].max())
+
     movie_vectors = build_movie_embeddings(movies)
     movie_id_to_index = {int(movie_id): index for index, movie_id in enumerate(movies["movieId"].astype(int).tolist())}
-    time_prior = build_time_prior(train_ratings, movies)
 
     recommendation_lists = []
     relevant_lists = []
@@ -211,11 +213,11 @@ def run_evaluation():
             recommend_for_user(
                 user["user_id"],
                 user["train_history"],
-                train_ratings,
                 movies,
                 movie_vectors,
                 movie_id_to_index,
-                time_prior,
+                algo,
+                prediction_timestamp,
             )
         )
         relevant_lists.append(user["relevant_items"])
@@ -224,7 +226,7 @@ def run_evaluation():
     summary = {
         "users_evaluated": len(eval_users),
         "split": "temporal holdout (last positive interaction per eligible user)",
-        "model": "SVD++ + Word2Vec/TF-IDF semantic embeddings + time-aware reranking",
+        "model": "TimeSVD++ + Word2Vec/TF-IDF semantic embeddings",
         "metrics": {
             "ndcg@20": metrics["ndcg@20"],
             "map@20": metrics["map@20"],
