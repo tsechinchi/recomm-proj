@@ -1,4 +1,3 @@
-import re
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,11 +10,6 @@ from flask import (
 
 from .tools.data_tool import *
 from . import recommender_original as original_system
-
-try:
-    from gensim.models import Word2Vec
-except ImportError:  # pragma: no cover - optional dependency
-    Word2Vec = None
 
 from surprise import Dataset
 from surprise import Reader
@@ -335,7 +329,7 @@ def getRecommendationBy(user_rates):
             results = result_frame.sort_values(by=['final_score'], ascending=False).head(12)
 
     if len(results) > 0:
-        return results.to_dict('records'), "These movies are recommended by an SVD++ + semantic + time-aware hybrid."  # type: ignore
+        return results.to_dict('records'), "These movies are recommended by an SVD++ + TF-IDF + time-aware hybrid."  # type: ignore
     return results, "No recommendations."
 
 
@@ -411,10 +405,6 @@ def _movie_text(row):
     return f"{title} {year} {genres_text} {overview}".strip().lower()
 
 
-def _tokenize(text):
-    return re.findall(r"[a-z0-9]+", text.lower())
-
-
 def _l2_normalize(matrix):
     matrix = np.asarray(matrix, dtype=float)
     if matrix.size == 0:
@@ -443,36 +433,17 @@ def _get_movie_embedding_cache():
     movie_frame = movies.copy(deep=True)
     texts = movie_frame.apply(_movie_text, axis=1).tolist()
 
-    if Word2Vec is not None:
-        tokenized_texts = [_tokenize(text) for text in texts]
-        tokenized_texts = [tokens if tokens else ['movie'] for tokens in tokenized_texts]
-        model = Word2Vec(
-            sentences=tokenized_texts,
-            vector_size=100,
-            window=5,
-            min_count=1,
-            workers=1,
-            sg=1,
-            epochs=25,
-            seed=42,
-        )
-        vectors = []
-        for tokens in tokenized_texts:
-            token_vectors = [model.wv[token] for token in tokens if token in model.wv]
-            vectors.append(np.mean(token_vectors, axis=0) if token_vectors else np.zeros(model.vector_size))
-        vectors = np.asarray(vectors, dtype=float)
+    vectorizer = TfidfVectorizer(stop_words='english', max_features=6000)
+    tfidf_matrix = vectorizer.fit_transform(texts)
+    if tfidf_matrix.shape[1] <= 2:
+        vectors = tfidf_matrix.toarray()
     else:
-        vectorizer = TfidfVectorizer(stop_words='english', max_features=6000)
-        tfidf_matrix = vectorizer.fit_transform(texts)
-        if tfidf_matrix.shape[1] <= 2:
+        n_components = min(100, tfidf_matrix.shape[0] - 1, tfidf_matrix.shape[1] - 1)
+        if n_components < 2:
             vectors = tfidf_matrix.toarray()
         else:
-            n_components = min(100, tfidf_matrix.shape[0] - 1, tfidf_matrix.shape[1] - 1)
-            if n_components < 2:
-                vectors = tfidf_matrix.toarray()
-            else:
-                svd = TruncatedSVD(n_components=n_components, random_state=42)
-                vectors = svd.fit_transform(tfidf_matrix)
+            svd = TruncatedSVD(n_components=n_components, random_state=42)
+            vectors = svd.fit_transform(tfidf_matrix)
 
     vectors = _l2_normalize(vectors)
     movie_ids = movie_frame['movieId'].astype(int).tolist()

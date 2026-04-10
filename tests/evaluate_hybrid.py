@@ -1,5 +1,4 @@
 import json
-import re
 from pathlib import Path
 
 import numpy as np
@@ -9,11 +8,6 @@ from surprise import Reader
 from surprise import SVDpp
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
-
-try:
-    from gensim.models import Word2Vec
-except ImportError:  # pragma: no cover - optional dependency
-    Word2Vec = None
 
 from flaskr.evaluation import evaluate_ranking_batch
 from flaskr.tools.data_tool import loadData
@@ -30,10 +24,6 @@ def movie_text(row):
     title = "" if pd.isna(row.get("title")) else str(row.get("title"))
     year = "" if pd.isna(row.get("year")) else str(row.get("year"))
     return f"{title} {year} {genres_text} {overview}".strip().lower()
-
-
-def tokenize(text):
-    return re.findall(r"[a-z0-9]+", text.lower())
 
 
 def l2_normalize(matrix):
@@ -56,24 +46,6 @@ def minmax_scale(values):
 
 def build_movie_embeddings(movies):
     texts = movies.apply(movie_text, axis=1).tolist()
-    if Word2Vec is not None:
-        tokenized = [tokenize(text) or ["movie"] for text in texts]
-        model = Word2Vec(
-            sentences=tokenized,
-            vector_size=100,
-            window=5,
-            min_count=1,
-            workers=1,
-            sg=1,
-            epochs=25,
-            seed=42,
-        )
-        vectors = []
-        for tokens in tokenized:
-            token_vectors = [model.wv[token] for token in tokens if token in model.wv]
-            vectors.append(np.mean(token_vectors, axis=0) if token_vectors else np.zeros(model.vector_size))
-        return l2_normalize(np.asarray(vectors, dtype=float))
-
     vectorizer = TfidfVectorizer(stop_words="english", max_features=6000)
     tfidf = vectorizer.fit_transform(texts)
     if tfidf.shape[1] <= 2:
@@ -152,7 +124,7 @@ def temporal_holdout_split(ratings):
     return train_ratings, eval_users
 
 
-def recommend_for_user(user_id, user_history, train_ratings, movies, movie_vectors, movie_id_to_index, time_prior):
+def build_collaborative_model(train_ratings):
     reader = Reader(rating_scale=(0.5, 5.0))
     train_df = train_ratings[["userId", "movieId", "rating"]]
     surprise_data = Dataset.load_from_df(train_df, reader=reader)
@@ -164,7 +136,10 @@ def recommend_for_user(user_id, user_history, train_ratings, movies, movie_vecto
         random_state=42,
     )
     algo.fit(surprise_data.build_full_trainset())
+    return algo
 
+
+def recommend_for_user(user_id, user_history, movies, movie_vectors, movie_id_to_index, time_prior, algo):
     seen_movie_ids = set(user_history["movieId"].astype(int).tolist())
     user_profile = build_user_profile(user_history, movie_vectors, movie_id_to_index)
 
@@ -202,6 +177,7 @@ def run_evaluation():
     movie_vectors = build_movie_embeddings(movies)
     movie_id_to_index = {int(movie_id): index for index, movie_id in enumerate(movies["movieId"].astype(int).tolist())}
     time_prior = build_time_prior(train_ratings, movies)
+    collaborative_model = build_collaborative_model(train_ratings)
 
     recommendation_lists = []
     relevant_lists = []
@@ -211,11 +187,11 @@ def run_evaluation():
             recommend_for_user(
                 user["user_id"],
                 user["train_history"],
-                train_ratings,
                 movies,
                 movie_vectors,
                 movie_id_to_index,
                 time_prior,
+                collaborative_model,
             )
         )
         relevant_lists.append(user["relevant_items"])
@@ -224,7 +200,7 @@ def run_evaluation():
     summary = {
         "users_evaluated": len(eval_users),
         "split": "temporal holdout (last positive interaction per eligible user)",
-        "model": "SVD++ + Word2Vec/TF-IDF semantic embeddings + time-aware reranking",
+        "model": "SVD++ + TF-IDF semantic embeddings + time-aware reranking",
         "metrics": {
             "ndcg@20": metrics["ndcg@20"],
             "map@20": metrics["map@20"],
