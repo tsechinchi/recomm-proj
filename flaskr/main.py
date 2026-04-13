@@ -655,8 +655,6 @@ def index():
     user_dislikes = _parse_cookie_list('user_dislikes')
     user_not_interested = _parse_cookie_list('user_not_interested')
 
-<<<<<<< HEAD
-=======
     state = _build_recommendation_state(
         variant,
         user_genres,
@@ -665,8 +663,6 @@ def index():
         user_dislikes=user_dislikes,
         user_not_interested=user_not_interested,
     )
-
->>>>>>> ui
     response = make_response(render_template('index.html',
                                              genres=default_genres,
                                              user_genres=user_genres,
