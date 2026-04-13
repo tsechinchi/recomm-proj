@@ -4,10 +4,48 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Movie Recommender System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Rajdhani', 'sans-serif'],
+                        body: ['"Share Tech Mono"', 'monospace'],
+                    },
+                    colors: {
+                        neonPink: '#a3786a',
+                        neonCyan: '#9ab3c0',
+                        neonGreen: '#93a784',
+                        cyberBlack: '#1a1f28',
+                        cyberGray: '#242c38',
+                        tokenSurface: '#1f2631',
+                        tokenPanel: '#293444',
+                        tokenBorder: '#8fa7b5',
+                        tokenText: '#e6e8ea',
+                        tokenMuted: '#b2b7bf',
+                        tokenAlert: '#b07a6d',
+                    },
+                    boxShadow: {
+                        tokenGlow: '0 0 0 1px rgba(143,167,181,0.35), 0 14px 30px rgba(0,0,0,0.45)',
+                        tokenNeon: '0 0 14px rgba(143,167,181,0.28)',
+                    },
+                },
+            },
+        }
+    </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+        .cyber-glitch:hover {
+            text-shadow: 1px 0 rgba(163, 120, 106, 0.65), -1px 0 rgba(154, 179, 192, 0.65);
+        }
+    </style>
 </head>
-<body>
+<body class="{% if ui_variant == 'v2' %}bg-cyberBlack font-body text-neonCyan v2-shell{% endif %}">
 <div id="app">
     <template v-if="isLoading">
         <section class="hero is-fullheight">
@@ -22,10 +60,10 @@
     </template>
     <template v-else>
         <div class="container">
-            <nav :class="['navbar', 'is-active']" role="navigation" aria-label="main navigation">
+            <nav :class="['navbar', 'is-active', {% if ui_variant == 'v2' %}'bg-cyberBlack border-b border-neonPink shadow-[0_5px_20px_rgba(163,120,106,0.22)]'{% endif %}]" role="navigation" aria-label="main navigation">
                 <div class="navbar-brand">
                     <a class="navbar-item" href="/">
-                        <span class="is-size-3">Movies Recommender System</span>
+                        <span class="is-size-3 {% if ui_variant == 'v2' %}font-display font-bold text-neonCyan tracking-[0.2em] uppercase cyber-glitch{% endif %}">{% if ui_variant == 'v2' %}Studio Recommender{% else %}Movies Recommender System{% endif %}</span>
                     </a>
 
                     <a role="button" :class="['navbar-burger', isActivityNavBar ? 'is-active' : '']" aria-label="menu"
@@ -42,14 +80,35 @@
                     </div>
                     <div class="navbar-end">
                         <div class="navbar-item">
-                            <div class="buttons">
+                            <div class="buttons {% if ui_variant == 'v2' %}v2-nav-actions{% endif %}">
+                                {% if ui_variant == 'v2' %}
+                                <span class="button is-small is-static bg-transparent border border-neonPink text-neonPink font-body uppercase tracking-wider v2-nav-pill" title="A/B algorithm group">Algorithm {{ ab_variant }}</span>
+                                {% if participant_id %}
+                                <span class="tag is-dark border border-neonCyan text-neonCyan bg-transparent">ID: {{ participant_id }}</span>
+                                {% endif %}
+                                <button class="button is-small bg-transparent border border-neonCyan text-neonCyan hover:bg-neonCyan hover:text-black font-body uppercase tracking-wider v2-nav-pill" @click="scrollToSection('preference-dashboard')">
+                                    <strong>DASHBOARD</strong>
+                                </button>
+                                <button class="button is-small bg-transparent border border-neonCyan text-neonCyan hover:bg-neonCyan hover:text-black font-body uppercase tracking-wider v2-nav-pill" @click="scrollToSection('feedback-loop')">
+                                    <strong>FEEDBACK LOOP</strong>
+                                </button>
+                                <button class="button is-small bg-transparent border border-neonPink text-neonPink hover:bg-neonPink hover:text-black font-body uppercase tracking-wider v2-nav-pill" @click="toggleControlPanel">
+                                    <strong>[[ isControlPanelOpen ? 'CLOSE CONTROLS' : 'RECOMMENDATION CONTROLS' ]]</strong>
+                                </button>
+                                <a class="button is-small bg-transparent border border-neonCyan text-neonCyan hover:bg-neonCyan hover:text-black font-body uppercase tracking-wider" href="/?variant={{ ab_variant }}{% if participant_id %}&participant_id={{ participant_id }}{% endif %}&ui=classic">
+                                    <strong>Original UI</strong>
+                                </a>
+                                {% else %}
+                                <a class="button is-primary is-light" href="/?variant={{ ab_variant }}{% if participant_id %}&participant_id={{ participant_id }}{% endif %}&ui=v2">
+                                    <strong>Studio UI</strong>
+                                </a>
                                 <button class="button is-danger" @click="cleanAll">
-                                    <strong>Clean All</strong>
+                                    <strong>{% if ui_variant == 'v2' %}CLEAR DATA{% else %}Clean All{% endif %}</strong>
                                 </button>
-
                                 <button class="button is-link" @click="showGenres = true">
-                                    <strong>Genres</strong>
+                                    <strong>{% if ui_variant == 'v2' %}SELECT GENRES{% else %}Genres{% endif %}</strong>
                                 </button>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -57,22 +116,130 @@
             </nav>
         </div>
 
+        {% if ui_variant == 'v2' %}
+        <section class="section pt-4 pb-3" v-if="!recommendationReady">
+            <div class="container">
+                <div class="v2-panel v2-hero">
+                    <div class="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgba(163,120,106,0.18),transparent_70%)]"></div>
+                    <p class="v2-overline">Algorithm {{ ab_variant }}</p>
+                    <h1 class="v2-title">Three-step setup for better movie recommendations</h1>
+                    <p class="v2-copy">Start with genres, add ratings, then fine-tune with likes. You can always undo your latest action.</p>
+
+                    <button class="button v2-btn v2-btn--primary is-medium" @click="startRecommendationFlow">START RECOMMENDATION</button>
+
+                    <p class="v2-copy mt-2">
+                        Completed: <strong class="text-neonCyan">[[ completedStepCount ]] / 3</strong>
+                        | Selected genres: <strong class="text-neonCyan">[[ genres.length ]]</strong>
+                        | Rated movies: <strong class="text-neonCyan">[[ userRates.length ]]</strong>
+                        | Recommendation ready:
+                        <strong :class="recommendationReady ? 'text-neonGreen' : 'text-neonPink'">[[ recommendationReady ? 'Yes' : 'No' ]]</strong>
+                    </p>
+
+                    <div class="v2-progress">
+                        <div class="v2-progress-bar" :style="{ width: stepProgressPercent + '%' }"></div>
+                    </div>
+
+                    <div class="v2-stepper">
+                        <article :class="['v2-step-card', stepOneDone ? 'is-complete' : '']">
+                            <p class="v2-step-index">STEP 1</p>
+                            <p class="v2-step-title">Choose Genres</p>
+                            <p class="v2-step-meta">[[ genres.length ]] selected</p>
+                        </article>
+                        <article :class="['v2-step-card', stepTwoDone ? 'is-complete' : '']">
+                            <p class="v2-step-index">STEP 2</p>
+                            <p class="v2-step-title">Rate Movies</p>
+                            <p class="v2-step-meta">[[ userRates.length ]] rated</p>
+                        </article>
+                        <article :class="['v2-step-card', stepThreeDone ? 'is-complete' : '']">
+                            <p class="v2-step-index">STEP 3</p>
+                            <p class="v2-step-title">Like Movies</p>
+                            <p class="v2-step-meta">[[ userLikes.length ]] liked</p>
+                        </article>
+                    </div>
+
+                    <div class="mt-5" v-if="selectedGenreLabels.length > 0">
+                        <p class="v2-overline mb-2">Selected Genres</p>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="v2-chip" v-for="genreName in selectedGenreLabels" :key="genreName">[[ genreName ]]</span>
+                        </div>
+                    </div>
+
+                    <div class="v2-notice" v-if="actionNotice">
+                        [[ actionNotice ]]
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div :class="['v2-control-backdrop', isControlPanelOpen ? 'is-active' : '']" @click="closeControlPanel"></div>
+
+        <aside :class="['v2-control-center', isControlPanelOpen ? 'is-open' : '']" :aria-hidden="(!isControlPanelOpen).toString()">
+            <div class="v2-control-head">
+                <p class="v2-overline mb-0">Recommendation Controls</p>
+                <button class="button v2-btn v2-panel-close" @click="closeControlPanel" aria-label="Close recommendation controls">
+                    <span class="fa fa-times" aria-hidden="true"></span>
+                </button>
+            </div>
+            <p class="text-sm text-tokenMuted mb-3">Use these actions anywhere on the page.</p>
+
+            <div class="v2-control-summary" v-if="recommendationReady">
+                <p class="v2-overline mb-1">Setup Status</p>
+                <p class="v2-control-summary-title">Setup completed. Recommendations are active.</p>
+            </div>
+
+            <div class="v2-control-summary" v-if="selectedGenreLabels.length > 0">
+                <p class="v2-overline mb-1">Selected Genres</p>
+                <div class="v2-control-chip-row">
+                    <span class="v2-chip" v-for="genreName in selectedGenreLabels" :key="'panel-' + genreName">[[ genreName ]]</span>
+                </div>
+            </div>
+
+            <div class="v2-control-grid mb-3">
+                <div class="v2-kpi">
+                    <span>Genres</span>
+                    <strong>[[ genres.length ]]</strong>
+                </div>
+                <div class="v2-kpi">
+                    <span>Ratings</span>
+                    <strong>[[ userRates.length ]]</strong>
+                </div>
+                <div class="v2-kpi">
+                    <span>Likes</span>
+                    <strong>[[ userLikes.length ]]</strong>
+                </div>
+                <div class="v2-kpi">
+                    <span>Ready</span>
+                    <strong :class="recommendationReady ? 'text-neonGreen' : 'text-neonPink'">[[ recommendationReady ? 'Yes' : 'No' ]]</strong>
+                </div>
+            </div>
+
+            <button class="button v2-btn w-full mb-2" @click="showGenres = true; closeControlPanel()">Select Genres</button>
+            <button class="button v2-btn w-full mb-2" @click="openRatingModal(); closeControlPanel()" :disabled="genres.length === 0">Rate Movies</button>
+            <button class="button v2-btn v2-btn--danger w-full mb-2" @click="cleanAll(); closeControlPanel()">Clear Data</button>
+            <a class="button v2-btn w-full" @click="closeControlPanel" href="/?variant={{ ab_variant }}{% if participant_id %}&participant_id={{ participant_id }}{% endif %}&ui=classic">Switch To Original UI</a>
+
+            <p class="text-xs mt-3" :class="requiresRefresh ? 'text-neonPink' : 'text-tokenMuted'">
+                [[ requiresRefresh ? 'Ratings are ready. Saving will auto-update recommendations.' : 'Likes and rating save actions update recommendations automatically.' ]]
+            </p>
+            <p class="text-xs mt-1 text-neonCyan" v-if="isSyncingFeedback">Applying your feedback and updating preference model...</p>
+        </aside>
+        {% endif %}
+
+        <div id="recommendation-anchor" v-if="genres.length > 0 && userRates.length > 0"></div>
         <template v-if="genres.length > 0 && userRates.length > 0">
-            {% if recommendations %}
-            <section class="section pt-2 pb-0">
+            <section class="section pt-2 pb-0 {% if ui_variant == 'v2' %}cyber-recommend-section{% endif %}" v-if="recommendationData.length > 0">
                 <div class="container">
                     <p class="is-size-4">
                         Recommended
                     </p>
-                    <p class="mb-3">{{ recommendations_message }}</p>
+                    <p class="mb-5 {% if ui_variant == 'v2' %}text-neonCyan border-l-2 border-neonCyan pl-3 text-sm{% endif %}">[[ recommendationsMessage ]]</p>
 
                     <div class="columns is-mobile is-multiline">
-                        {% for movie in recommendations %}
-                        <div class="column is-3-fullhd is-3-desktop is-3-tablet is-6-mobile">
-                            <div class="card">
-                                <div class="card-image">
+                        <div class="column is-3-fullhd is-3-desktop is-3-tablet is-6-mobile" v-for="movie in recommendationData" :key="'rec-' + movie.movieId">
+                            <div class="card {% if ui_variant == 'v2' %}border-l-4 border-r-0 border-y-0 border-l-neonPink bg-cyberGray shadow-[0_5px_15px_rgba(0,0,0,0.8)] transition-all duration-300 hover:border-l-neonCyan hover:shadow-[0_0_20px_rgba(0,240,255,0.4)] hover:-translate-y-2{% endif %}">
+                                <div class="card-image relative">
                                     <figure class="image is-4by3">
-                                        <img src="{{ movie['cover_url'] }}"
+                                        <img :src="movie.cover_url"
                                              onerror="this.src='https://placehold.co/480x640?text=No+Cover';"
                                              alt="">
                                     </figure>
@@ -80,41 +247,55 @@
                                 <div class="card-content p-2">
                                     <div class="media">
                                         <div class="media-content">
-                                            <p style="font-size: 0.8rem; font-weight: bold">{{ movie['title']
-                                                }}</p>
-                                            <p style="font-size: 0.8rem">{{ movie['release_date'] }}</p>
+                                            <p class="v2-title-safe {% if ui_variant == 'v2' %}font-display font-bold uppercase text-neonCyan mb-1 leading-tight tracking-[0.05em]{% else %}font-bold text-[0.8rem]{% endif %}">[[ movie.title ]]</p>
+                                            <p class="{% if ui_variant == 'v2' %}text-[0.7rem] text-gray-500 font-body mb-2{% else %}text-[0.8rem]{% endif %}">[[ movie.release_date ]]</p>
+                                            {% if ui_variant == 'v2' %}
+                                            <div class="border-t border-dotted border-gray-700 pt-2 mt-2">
+                                                <p class="font-display text-xs tracking-[0.2em] font-bold text-neonGreen" v-if="movieScore(movie.movieId)">MATCH: [[ (movieScore(movie.movieId) * 100).toFixed(1) ]]%</p>
+                                                <div class="mt-2 flex flex-wrap gap-1" v-if="movieReasonTags(movie.movieId).length > 0">
+                                                    <span class="v2-reason-chip border border-gray-800 bg-[rgba(163,120,106,0.12)] px-2 py-[2px] font-display text-[9px] uppercase tracking-[0.1em] text-neonPink" v-for="reason in movieReasonTags(movie.movieId)" :key="movie.movieId + '-' + reason">[[ reason ]]</span>
+                                                </div>
+                                            </div>
+                                            {% endif %}
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="card-footer p-2">
-                                    <button class="button is-small" @click="updateLike({{movie['movieId']}})">
-                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? 'checked': '']" > Like</span>
-                                    </button>
+                                <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonPink{% endif %}">
+                                    <div class="v2-feedback-row">
+                                        <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateLike(movie.movieId)">
+                                            <span :class="['fa fa-thumbs-up', inLikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonCyan{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}LIKE{% else %}Like{% endif %}</span>
+                                        </button>
+                                        <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateDislike(movie.movieId)">
+                                            <span :class="['fa fa-thumbs-down', inDislikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}DISLIKE{% else %}Dislike{% endif %}</span>
+                                        </button>
+                                        <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateNotInterested(movie.movieId)">
+                                            <span :class="['fa fa-ban', inNotInterested(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}NOT INTERESTED{% else %}Skip{% endif %}</span>
+                                        </button>
+                                        <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="openWhyModal(movie.movieId)">
+                                            <span class="fa fa-question-circle"> {% if ui_variant == 'v2' %}WHY THIS?{% else %}Why?{% endif %}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        {% endfor %}
                     </div>
                 </div>
             </section>
-            {% endif %}
 
-            {% if likes_similars %}
-            <section class="section pb-0">
+            <section class="section pb-0 {% if ui_variant == 'v2' %}cyber-similar-section{% endif %}" v-if="likesSimilarsData.length > 0">
                 <div class="container">
                     <p class="is-size-4">
                         Liked with Similar Items
                     </p>
-                    <p class="mb-3">{{ likes_similar_message }}</p>
+                    <p class="mb-5 {% if ui_variant == 'v2' %}text-neonPink border-l-2 border-neonPink pl-3 text-sm{% endif %}">[[ likesSimilarMessage ]]</p>
 
                     <div class="columns is-mobile is-multiline">
-                        {% for movie in likes_similars %}
-                        <div class="column is-2-fullhd is-2-desktop is-2-tablet is-6-mobile">
-                            <div class="card">
-                                <div class="card-image">
+                        <div class="column is-2-fullhd is-2-desktop is-2-tablet is-6-mobile" v-for="movie in likesSimilarsData" :key="'similar-' + movie.movieId">
+                            <div class="card {% if ui_variant == 'v2' %}border-l-2 border-r-0 border-y-0 border-l-neonCyan bg-cyberGray shadow-[0_5px_15px_rgba(0,0,0,0.8)] transition-all duration-300 hover:border-l-neonGreen hover:shadow-[0_0_15px_rgba(0,255,63,0.4)] hover:-translate-y-1 opacity-80 hover:opacity-100{% endif %}">
+                                <div class="card-image relative">
                                     <figure class="image is-3by4">
-                                        <img src="{{ movie['cover_url'] }}"
+                                        <img :src="movie.cover_url"
                                              onerror="this.src='https://placehold.co/480x640?text=No+Cover';"
                                              alt="">
                                     </figure>
@@ -122,40 +303,43 @@
                                 <div class="card-content p-2">
                                     <div class="media">
                                         <div class="media-content">
-                                            <p style="font-size: 0.8rem; font-weight: bold">{{ movie['title']
-                                                }}</p>
-                                            <p style="font-size: 0.8rem">{{ movie['release_date'] }}</p>
+                                            <p class="v2-title-safe {% if ui_variant == 'v2' %}font-display font-bold uppercase text-neonGreen mb-1 leading-tight text-[0.8rem] tracking-[0.05em]{% else %}font-bold text-[0.8rem]{% endif %}">[[ movie.title ]]</p>
+                                            <p class="{% if ui_variant == 'v2' %}text-[0.65rem] text-gray-500 font-body{% else %}text-[0.8rem]{% endif %}">[[ movie.release_date ]]</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="card-footer p-2">
-                                    <button class="button is-small" @click="updateLike({{movie['movieId']}})">
-                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? 'checked': '']" > Like</span>
-                                    </button>
+                                <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonCyan{% endif %}">
+                                    <div class="v2-feedback-row">
+                                        <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateLike(movie.movieId)">
+                                            <span :class="['fa fa-thumbs-up', inLikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonGreen{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}LIKE{% else %}Like{% endif %}</span>
+                                        </button>
+                                        <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateDislike(movie.movieId)">
+                                            <span :class="['fa fa-thumbs-down', inDislikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}DISLIKE{% else %}Dislike{% endif %}</span>
+                                        </button>
+                                        <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateNotInterested(movie.movieId)">
+                                            <span :class="['fa fa-ban', inNotInterested(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}NOT INTERESTED{% else %}Skip{% endif %}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        {% endfor %}
                     </div>
                 </div>
             </section>
-            {% endif %}
 
-            {% if likes %}
-            <section class="section pb-0">
+            <section class="section pb-0 {% if ui_variant == 'v2' %}cyber-likes-section{% endif %}" v-if="likesData.length > 0">
                 <div class="container">
                     <p class="is-size-4 mb-3">
                         Liked <button class="button" @click="reloadPage"><i class="fa fa-refresh mr-3" aria-hidden="true"></i>Refresh</button>
                     </p>
 
-                    <div class="columns is-mobile pb-3" style="overflow: scroll">
-                        {% for movie in likes %}
-                        <div class="column is-2-fullhd is-2-desktop is-2-tablet is-6-mobile">
-                            <div class="card">
-                                <div class="card-image">
+                    <div class="columns is-mobile pb-3" style="overflow-x: auto; overflow-y: hidden; flex-wrap: nowrap;">
+                        <div class="column is-2-fullhd is-2-desktop is-3-tablet is-6-mobile" style="flex: 0 0 auto;" v-for="movie in likesData" :key="'like-' + movie.movieId">
+                            <div class="card {% if ui_variant == 'v2' %}border-l-2 border-r-0 border-y-0 border-l-neonGreen bg-cyberGray shadow-[0_5px_15px_rgba(0,0,0,0.8)] transition-all duration-300 hover:border-l-white hover:shadow-[0_0_15px_rgba(255,255,255,0.4)] hover:-translate-y-1 opacity-70 hover:opacity-100{% endif %}">
+                                <div class="card-image relative">
                                     <figure class="image is-3by4">
-                                        <img src="{{ movie['cover_url'] }}"
+                                        <img :src="movie.cover_url"
                                              onerror="this.src='https://placehold.co/480x640?text=No+Cover';"
                                              alt="">
                                     </figure>
@@ -163,26 +347,114 @@
                                 <div class="card-content p-2">
                                     <div class="media">
                                         <div class="media-content">
-                                            <p style="font-size: 0.8rem; font-weight: bold">{{ movie['title']
-                                                }}</p>
-                                            <p style="font-size: 0.8rem">{{ movie['release_date'] }}</p>
+                                            <p class="v2-title-safe {% if ui_variant == 'v2' %}font-display font-bold uppercase text-white mb-1 leading-tight text-[0.8rem] tracking-[0.05em]{% else %}font-bold text-[0.8rem]{% endif %}">[[ movie.title ]]</p>
+                                            <p class="{% if ui_variant == 'v2' %}text-[0.65rem] text-gray-500 font-body{% else %}text-[0.8rem]{% endif %}">[[ movie.release_date ]]</p>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="card-footer p-2">
-                                    <button class="button is-small" @click="updateLike({{movie['movieId']}})">
-                                        <span :class="['fa fa-thumbs-up', inLikes({{movie['movieId']}}) ? 'checked': '']" > Like</span>
-                                    </button>
+                                <div class="card-footer p-2 {% if ui_variant == 'v2' %}bg-cyberGray border-t border-neonGreen{% endif %}">
+                                    <div class="v2-feedback-row">
+                                        <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateLike(movie.movieId)">
+                                            <span :class="['fa fa-thumbs-up', inLikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonGreen{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}LIKE{% else %}Like{% endif %}</span>
+                                        </button>
+                                        <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateDislike(movie.movieId)">
+                                            <span :class="['fa fa-thumbs-down', inDislikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}DISLIKE{% else %}Dislike{% endif %}</span>
+                                        </button>
+                                        <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateNotInterested(movie.movieId)">
+                                            <span :class="['fa fa-ban', inNotInterested(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}NOT INTERESTED{% else %}Skip{% endif %}</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        {% endfor %}
                     </div>
                 </div>
             </section>
-            {% endif %}
         </template>
+
+        {% if ui_variant == 'v2' %}
+        <section id="preference-dashboard" class="section pt-2 pb-0" v-if="recommendationReady">
+            <div class="container">
+                <div class="v2-panel p-4">
+                    <p class="v2-overline">Preference Dashboard</p>
+                    <p class="v2-copy mt-0">[[ preferenceDashboard.focus_summary || 'System is still learning your preference focus.' ]]</p>
+
+                    <div class="v2-control-grid mb-3">
+                        <div class="v2-kpi">
+                            <span>Likes</span>
+                            <strong>[[ dashboardSummary.likes || 0 ]]</strong>
+                        </div>
+                        <div class="v2-kpi">
+                            <span>Dislikes</span>
+                            <strong>[[ dashboardSummary.dislikes || 0 ]]</strong>
+                        </div>
+                        <div class="v2-kpi">
+                            <span>Not Interested</span>
+                            <strong>[[ dashboardSummary.not_interested || 0 ]]</strong>
+                        </div>
+                        <div class="v2-kpi">
+                            <span>Rated</span>
+                            <strong>[[ dashboardSummary.rated_movies || 0 ]]</strong>
+                        </div>
+                    </div>
+
+                    <div class="v2-dashboard-grid">
+                        <div>
+                            <p class="v2-overline mb-1">Top Preferred Genres</p>
+                            <div v-if="dashboardGenres.length > 0">
+                                <div class="v2-bar-row" v-for="genre in dashboardGenres" :key="'pref-' + genre.name">
+                                    <span>[[ genre.name ]]</span>
+                                    <div class="v2-bar-track">
+                                        <div class="v2-bar-fill" :style="{ width: Math.max(4, Math.round((genre.ratio || 0) * 100)) + '%' }"></div>
+                                    </div>
+                                    <strong>[[ ((genre.ratio || 0) * 100).toFixed(0) ]]%</strong>
+                                </div>
+                            </div>
+                            <p class="text-sm text-tokenMuted" v-else>No stable genre preference yet.</p>
+                        </div>
+
+                        <div>
+                            <p class="v2-overline mb-1">Suppressed Signals</p>
+                            <div v-if="dashboardSuppressedGenres.length > 0" class="v2-chip-stack">
+                                <span class="v2-chip v2-chip--danger" v-for="genre in dashboardSuppressedGenres" :key="'sup-' + genre.name">[[ genre.name ]]</span>
+                            </div>
+                            <p class="text-sm text-tokenMuted" v-else>No suppressed topic right now.</p>
+
+                            <p class="v2-overline mt-3 mb-1">Preferred People</p>
+                            <div class="v2-chip-stack" v-if="dashboardPreferredPeople.length > 0">
+                                <span class="v2-chip" v-for="person in dashboardPreferredPeople" :key="person.role + '-' + person.name">[[ person.name ]] ([[ person.role ]])</span>
+                            </div>
+                            <p class="text-sm text-tokenMuted" v-else>Dataset currently has limited actor/director metadata.</p>
+                        </div>
+                    </div>
+
+                    <div class="v2-notice" v-if="feedbackImpact.message">
+                        <strong>Feedback Impact:</strong> [[ feedbackImpact.message ]]
+                        <ul class="mt-2 pl-4 list-disc" v-if="feedbackImpact.details && feedbackImpact.details.length > 0">
+                            <li v-for="detail in feedbackImpact.details" :key="detail">[[ detail ]]</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="feedback-loop" class="section pt-2 pb-0" v-if="feedbackLoop.steps && feedbackLoop.steps.length > 0">
+            <div class="container">
+                <div class="v2-panel p-4">
+                    <p class="v2-overline">Feedback Loop</p>
+                    <p class="v2-copy mt-0">[[ feedbackLoop.headline ]]</p>
+
+                    <div class="v2-loop-grid">
+                        <article class="v2-loop-step" v-for="step in feedbackLoop.steps" :key="step.title">
+                            <p class="v2-step-title">[[ step.title ]]</p>
+                            <p class="v2-step-meta">[[ step.description ]]</p>
+                        </article>
+                    </div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
 
         <div :class="['modal', showGenres ? 'is-active' : '']">
             <div class="modal-background"></div>
@@ -199,20 +471,21 @@
                     </button>
                     {% endfor %}
                 </div>
-                <footer class="modal-card-foot">
-                    <button class="button is-link" :disabled="genres.length == 0" @click="saveGenres">Save
-                    </button>
+                <footer class="modal-card-foot {% if ui_variant == 'v2' %}bg-cyberBlack border-t border-gray-800{% endif %}">
+                    <button class="button is-link" :disabled="genres.length == 0" @click="saveGenres">{% if ui_variant == 'v2' %}Save And Continue{% else %}Save{% endif %}</button>
+                    <button class="button" @click="showGenres = false">Cancel</button>
                 </footer>
             </div>
+            <button class="modal-close is-large" aria-label="close" @click="showGenres = false"></button>
         </div>
 
         <div :class="['modal', showMovieRate ? 'is-active' : '']">
-            <div class="modal-background"></div>
-            <div class="modal-card" style="max-width: 1000px">
-                <header class="modal-card-head">
-                    <p class="modal-card-title"></p>
+            <div class="modal-background {% if ui_variant == 'v2' %}bg-[rgba(5,5,16,0.9)] backdrop-blur-sm{% endif %}"></div>
+            <div class="modal-card {% if ui_variant == 'v2' %}border-2 border-neonPink shadow-[0_0_30px_rgba(255,0,160,0.3)]{% endif %}" style="max-width: 1000px">
+                <header class="modal-card-head {% if ui_variant == 'v2' %}bg-cyberBlack border-b border-gray-800{% endif %}">
+                    <p class="modal-card-title {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-neonCyan text-xl font-bold{% endif %}">{% if ui_variant == 'v2' %}RATE MOVIES{% else %}Please rate movies{% endif %}</p>
                 </header>
-                <div class="modal-card-body">
+                <div class="modal-card-body {% if ui_variant == 'v2' %}bg-cyberGray{% endif %}">
                     <div class="columns is-mobile is-multiline">
                         {% for movie in default_genres_movies %}
                         <div class="column is-3-fullhd is-3-desktop is-3-tablet is-6-mobile">
@@ -245,18 +518,42 @@
                     </div>
                 </div>
                 <footer class="modal-card-foot">
-                    <button class="button is-link" :disabled="userRates.length < 10"
-                            @click="showMovieRate = false; reloadPage()">Save
-                    </button>
+                    <button class="button is-link" :disabled="userRates.length < 10" @click="saveRatings">{% if ui_variant == 'v2' %}Save Ratings{% else %}Save{% endif %}</button>
+                    <button class="button" @click="showMovieRate = false">Cancel</button>
                 </footer>
             </div>
+        </div>
+
+        <div :class="['modal', showWhyModal ? 'is-active' : '']">
+            <div class="modal-background {% if ui_variant == 'v2' %}bg-[rgba(5,5,16,0.9)] backdrop-blur-sm{% endif %}"></div>
+            <div class="modal-card {% if ui_variant == 'v2' %}border-2 border-neonCyan shadow-[0_0_30px_rgba(0,240,255,0.3)]{% endif %}" style="max-width: 760px">
+                <header class="modal-card-head {% if ui_variant == 'v2' %}bg-cyberBlack border-b border-gray-800{% endif %}">
+                    <p class="modal-card-title {% if ui_variant == 'v2' %}font-display uppercase tracking-[0.2em] text-neonCyan text-xl font-bold{% endif %}">Why Am I Seeing This?</p>
+                </header>
+                <div class="modal-card-body {% if ui_variant == 'v2' %}bg-cyberGray text-tokenText{% endif %}">
+                    <template v-if="activeWhyExplanation">
+                        <p class="font-display text-lg mb-2">[[ activeWhyExplanation.movieTitle ]]</p>
+                        <p class="text-sm mb-2 text-tokenMuted v2-wrap-text">[[ activeWhyExplanation.summary ]]</p>
+
+                        <ul class="pl-4 list-disc text-sm mb-3 v2-wrap-text">
+                            <li v-for="detail in activeWhyExplanation.details" :key="detail">[[ detail ]]</li>
+                        </ul>
+
+                    </template>
+                    <p v-else class="text-sm text-tokenMuted">Explanation is not available for this movie yet.</p>
+                </div>
+                <footer class="modal-card-foot {% if ui_variant == 'v2' %}bg-cyberBlack border-t border-gray-800{% endif %}">
+                    <button class="button is-link" @click="closeWhyModal">Close</button>
+                </footer>
+            </div>
+            <button class="modal-close is-large" aria-label="close" @click="closeWhyModal"></button>
         </div>
 
         <footer class="footer mt-6">
             <div class="container is-max-widescreen">
                 <div class="content has-text-centered">
                     <p>
-                        Copyright © 2026 <a href="https://hci.comp.hkbu.edu.hk" target="_blank"><strong>PI Lab</strong></a>. All Rights Reserved.
+                        Copyright (c) 2026 <a href="https://hci.comp.hkbu.edu.hk" target="_blank"><strong>PI Lab</strong></a>. All Rights Reserved.
                     </p>
                     <a href="https://www.comp.hkbu.edu.hk" target="_blank"><img src="/static/img/comp-logo.png"
                                                                                 alt="logo"
@@ -270,45 +567,233 @@
     </template>
 </div>
 
+<script id="recommendation-data" type="application/json">{{ recommendations | tojson }}</script>
+<script id="likes-similars-data" type="application/json">{{ likes_similars | tojson }}</script>
+<script id="likes-data" type="application/json">{{ likes | tojson }}</script>
+<script id="genre-catalog-data" type="application/json">{{ genres | tojson }}</script>
+<script id="selected-genres-data" type="application/json">{{ user_genres | tojson }}</script>
+<script id="selected-rates-data" type="application/json">{{ user_rates | tojson }}</script>
+<script id="selected-likes-data" type="application/json">{{ user_likes | tojson }}</script>
+<script id="selected-dislikes-data" type="application/json">{{ user_dislikes | tojson }}</script>
+<script id="selected-not-interested-data" type="application/json">{{ user_not_interested | tojson }}</script>
+<script id="recommendations-message-data" type="application/json">{{ recommendations_message | tojson }}</script>
+<script id="likes-similar-message-data" type="application/json">{{ likes_similar_message | tojson }}</script>
+<script id="recommendation-explanations-data" type="application/json">{{ recommendation_explanations | tojson }}</script>
+<script id="preference-dashboard-data" type="application/json">{{ preference_dashboard | tojson }}</script>
+<script id="feedback-loop-data" type="application/json">{{ feedback_loop | tojson }}</script>
+<script id="feedback-impact-data" type="application/json">{{ feedback_impact | tojson }}</script>
+<script id="ab-variant-data" type="application/json">{{ ab_variant | tojson }}</script>
+<script id="ui-variant-data" type="application/json">{{ ui_variant | tojson }}</script>
+
 <script type="module">
-    import {createApp, onMounted, ref} from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+    import {computed, createApp, onMounted, ref} from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+
+    function parseJsonScript(tagId, fallbackValue) {
+        const target = document.getElementById(tagId)
+        if (!target) {
+            return fallbackValue
+        }
+        try {
+            const parsed = JSON.parse(target.textContent || 'null')
+            return parsed === null ? fallbackValue : parsed
+        } catch (_error) {
+            return fallbackValue
+        }
+    }
+
+    const initialRecommendationData = parseJsonScript('recommendation-data', [])
+    const initialLikesSimilarsData = parseJsonScript('likes-similars-data', [])
+    const initialLikesData = parseJsonScript('likes-data', [])
+    const initialRecommendationsMessage = parseJsonScript('recommendations-message-data', '')
+    const initialLikesSimilarMessage = parseJsonScript('likes-similar-message-data', '')
+    const genreCatalog = parseJsonScript('genre-catalog-data', [])
+    const initialSelectedGenres = parseJsonScript('selected-genres-data', [])
+    const initialSelectedRates = parseJsonScript('selected-rates-data', [])
+    const initialSelectedLikes = parseJsonScript('selected-likes-data', [])
+    const initialSelectedDislikes = parseJsonScript('selected-dislikes-data', [])
+    const initialSelectedNotInterested = parseJsonScript('selected-not-interested-data', [])
+    const initialRecommendationExplanations = parseJsonScript('recommendation-explanations-data', {})
+    const initialPreferenceDashboard = parseJsonScript('preference-dashboard-data', {})
+    const initialFeedbackLoop = parseJsonScript('feedback-loop-data', {})
+    const initialFeedbackImpact = parseJsonScript('feedback-impact-data', {})
+    const abVariant = parseJsonScript('ab-variant-data', 'A')
+    const uiVariant = parseJsonScript('ui-variant-data', 'classic')
 
     let app = createApp({
         setup() {
             const isLoading = ref(true)
             const isActivityNavBar = ref(false)
 
+            const showGenres = ref(false)
+            const genres = ref(initialSelectedGenres)
+
+            const showMovieRate = ref(false)
+            const userRates = ref(initialSelectedRates)
+            const userLikes = ref(initialSelectedLikes)
+            const userDislikes = ref(initialSelectedDislikes)
+            const userNotInterested = ref(initialSelectedNotInterested)
+
+            const recommendationData = ref(initialRecommendationData)
+            const likesSimilarsData = ref(initialLikesSimilarsData)
+            const likesData = ref(initialLikesData)
+            const recommendationsMessage = ref(initialRecommendationsMessage)
+            const likesSimilarMessage = ref(initialLikesSimilarMessage)
+
+            const recommendationExplanations = ref(initialRecommendationExplanations)
+            const preferenceDashboard = ref(initialPreferenceDashboard)
+            const feedbackLoop = ref(initialFeedbackLoop)
+            const feedbackImpact = ref(initialFeedbackImpact)
+
+            const showWhyModal = ref(false)
+            const activeWhyMovieId = ref('')
+            const isSyncingFeedback = ref(false)
+
+            const actionHistory = ref([])
+            const actionNotice = ref('')
+            const requiresRefresh = ref(false)
+            const isControlPanelOpen = ref(false)
+
+            const stepOneDone = computed(() => genres.value.length > 0)
+            const stepTwoDone = computed(() => userRates.value.length > 0)
+            const stepThreeDone = computed(() => userLikes.value.length > 0)
+            const completedStepCount = computed(() => {
+                return [stepOneDone.value, stepTwoDone.value, stepThreeDone.value].filter(Boolean).length
+            })
+            const stepProgressPercent = computed(() => Math.round((completedStepCount.value / 3) * 100))
+            const recommendationReady = computed(() => stepOneDone.value && stepTwoDone.value)
+            const canUndo = computed(() => actionHistory.value.length > 0)
+            const selectedGenreLabels = computed(() => {
+                const selected = new Set(genres.value.map((genreId) => genreId.toString()))
+                return genreCatalog
+                    .filter((genreItem) => selected.has(genreItem.id.toString()))
+                    .map((genreItem) => genreItem.name)
+            })
+            const dashboardSummary = computed(() => preferenceDashboard.value.summary || {})
+            const dashboardGenres = computed(() => preferenceDashboard.value.genre_preferences || [])
+            const dashboardSuppressedGenres = computed(() => preferenceDashboard.value.suppressed_genres || [])
+            const dashboardPreferredPeople = computed(() => {
+                const actors = (preferenceDashboard.value.preferred_actors || []).map((item) => ({...item, role: 'actor'}))
+                const directors = (preferenceDashboard.value.preferred_directors || []).map((item) => ({...item, role: 'director'}))
+                return [...actors, ...directors].slice(0, 8)
+            })
+            const activeWhyExplanation = computed(() => {
+                if (!activeWhyMovieId.value) {
+                    return null
+                }
+                const key = activeWhyMovieId.value.toString()
+                return recommendationExplanations.value[key] || null
+            })
+
+            let noticeTimer = null
+            let ratingSyncTimer = null
+
             // ==== Vue default operations ====
             onMounted(() => {
                 isLoading.value = false
-
                 showGenres.value = genres.value.length === 0
-                showMovieRate.value = (genres.value.length > 0 && userRates.value.length === 0)
+                showMovieRate.value = genres.value.length > 0 && userRates.value.length === 0
             })
 
-            function cleanAll() {
-                if (confirm("Are you sure to delete all records?")) {
-                    document.cookie = "user_genres=; Max-Age=0";
-                    document.cookie = "user_rates=; Max-Age=0";
-                    document.cookie = "user_likes=; Max-Age=0";
-                    reloadPage()
+            function setNotice(message) {
+                actionNotice.value = message
+                if (noticeTimer) {
+                    window.clearTimeout(noticeTimer)
+                }
+                noticeTimer = window.setTimeout(() => {
+                    actionNotice.value = ''
+                }, 2800)
+            }
+
+            function toggleControlPanel() {
+                isControlPanelOpen.value = !isControlPanelOpen.value
+            }
+
+            function closeControlPanel() {
+                isControlPanelOpen.value = false
+            }
+
+            function writeCookieArray(cookieName, values) {
+                if (values.length === 0) {
+                    document.cookie = cookieName + '=; Max-Age=0; path=/'
+                    return
+                }
+                document.cookie = cookieName + '=' + values.join(',') + '; path=/'
+            }
+
+            function persistUserState() {
+                writeCookieArray('user_genres', genres.value)
+                writeCookieArray('user_rates', userRates.value)
+                writeCookieArray('user_likes', userLikes.value)
+                writeCookieArray('user_dislikes', userDislikes.value)
+                writeCookieArray('user_not_interested', userNotInterested.value)
+            }
+
+            function snapshotState() {
+                return {
+                    genres: [...genres.value],
+                    userRates: [...userRates.value],
+                    userLikes: [...userLikes.value],
+                    userDislikes: [...userDislikes.value],
+                    userNotInterested: [...userNotInterested.value],
+                    requiresRefresh: requiresRefresh.value,
                 }
             }
 
-            // ==== Genre Operation ====
-            const showGenres = ref(false)
-            const genres = ref({{user_genres | tojson}}) // If this place shows error, please check the format: ref({{user_genres | tojson}}) 
+            function pushHistory(actionLabel) {
+                actionHistory.value.push({label: actionLabel, state: snapshotState()})
+                if (actionHistory.value.length > 40) {
+                    actionHistory.value.shift()
+                }
+            }
 
+            function undoLastOperation() {
+                if (actionHistory.value.length === 0) {
+                    setNotice('No action to undo.')
+                    return
+                }
+                const lastAction = actionHistory.value.pop()
+                genres.value = [...lastAction.state.genres]
+                userRates.value = [...lastAction.state.userRates]
+                userLikes.value = [...lastAction.state.userLikes]
+                userDislikes.value = [...(lastAction.state.userDislikes || [])]
+                userNotInterested.value = [...(lastAction.state.userNotInterested || [])]
+                requiresRefresh.value = Boolean(lastAction.state.requiresRefresh)
+                persistUserState()
+                setNotice('Undo: ' + lastAction.label)
+            }
+
+            function cleanAll() {
+                if (!confirm('Are you sure to delete all records?')) {
+                    return
+                }
+                pushHistory('Clear all data')
+                genres.value = []
+                userRates.value = []
+                userLikes.value = []
+                userDislikes.value = []
+                userNotInterested.value = []
+                requiresRefresh.value = false
+                persistUserState()
+
+                if (uiVariant === 'v2') {
+                    showGenres.value = true
+                    showMovieRate.value = false
+                    setNotice('All records are cleared.')
+                    return
+                }
+                reloadPage()
+            }
+
+            // ==== Genre Operation ====
             function updateGenre(_id) {
-                let id = _id.toString()
-                const index = genres.value.indexOf(id);
+                pushHistory('Update selected genres')
+                const id = _id.toString()
+                const index = genres.value.indexOf(id)
                 if (index > -1) {
-                    genres.value.splice(index, 1);
+                    genres.value.splice(index, 1)
                 } else {
-                    genres.value.push(id);
-                    genres.value = genres.value.sort(function (a, b) {
-                        return a - b;
-                    });
+                    genres.value.push(id)
+                    genres.value = genres.value.sort((a, b) => Number(a) - Number(b))
                 }
             }
 
@@ -317,60 +802,268 @@
             }
 
             function saveGenres() {
-                document.cookie = "user_genres=" + genres.value;
-                document.cookie = "user_rates=; Max-Age=0";
+                pushHistory('Save genres')
+                persistUserState()
+
+                if (uiVariant === 'v2') {
+                    showGenres.value = false
+                    if (userRates.value.length === 0) {
+                        requiresRefresh.value = true
+                        showMovieRate.value = true
+                        setNotice('Genres saved. Next step: rate movies.')
+                        return
+                    }
+                    requiresRefresh.value = false
+                    syncRecommendationState({type: 'genre_save'})
+                    return
+                }
                 reloadPage()
             }
 
             // ==== Movie Rate Operation ====
-            const showMovieRate = ref(false)
-            const userRates = ref({{user_rates | tojson}}) // If this place shows error, please check the format: ref({{user_rates | tojson}})
-
             function getRate(movieId) {
                 for (let index in userRates.value) {
-                    let record = userRates.value[index].split('|')
-                    if (parseInt(record[1]) === movieId) {
-                        return [index, record[2]]
+                    const record = userRates.value[index].split('|')
+                    if (parseInt(record[1], 10) === movieId) {
+                        return [index, Number(record[2])]
                     }
                 }
-
                 return [-1, -1]
             }
 
             function updateRate(movieId, rate) {
-                let record = '611' + '|' + movieId + '|' + rate + '|' + '0' //  total 610 users, so the new user id is 944
-
-                const index = getRate(movieId)[0];
+                pushHistory('Rate movie')
+                const record = '611|' + movieId + '|' + rate + '|0'
+                const index = getRate(movieId)[0]
                 if (index > -1) {
-                    userRates.value[index] = record;
+                    userRates.value[index] = record
                 } else {
-                    userRates.value.push(record);
+                    userRates.value.push(record)
                 }
-                document.cookie = "user_rates=" + userRates.value;
+                writeCookieArray('user_rates', userRates.value)
+                requiresRefresh.value = true
+                if (uiVariant === 'v2') {
+                    requiresRefresh.value = false
+                    setNotice('Rating updated. Recommendation lists are refreshing.')
+                    if (ratingSyncTimer) {
+                        window.clearTimeout(ratingSyncTimer)
+                    }
+                    ratingSyncTimer = window.setTimeout(() => {
+                        syncRecommendationState({type: 'rating_save'})
+                    }, 220)
+                }
             }
-            // ==== Movie Like Operation ====
-            const userLikes = ref({{user_likes | tojson}}) // If this place shows error, please check the format: ref({{user_likes | tojson}})
 
-            function updateLike(_movieId) {
-                let movieId = _movieId.toString()
-                const index = userLikes.value.indexOf(movieId);
+            function saveRatings() {
+                showMovieRate.value = false
+                if (uiVariant === 'v2') {
+                    if (ratingSyncTimer) {
+                        window.clearTimeout(ratingSyncTimer)
+                        ratingSyncTimer = null
+                    }
+                    requiresRefresh.value = false
+                    syncRecommendationState({type: 'rating_save'})
+                    return
+                }
+                reloadPage()
+            }
+
+            function openRatingModal() {
+                if (genres.value.length === 0) {
+                    showGenres.value = true
+                    setNotice('Choose genres before rating movies.')
+                    return
+                }
+                showMovieRate.value = true
+            }
+
+            function removeFromBucket(bucket, movieId) {
+                const index = bucket.indexOf(movieId)
                 if (index > -1) {
-                    userLikes.value.splice(index, 1);
-                } else {
-                    userLikes.value.push(movieId);
+                    bucket.splice(index, 1)
+                }
+            }
+
+            function syncRecommendationState(feedbackEvent = null) {
+                if (uiVariant !== 'v2') {
+                    return
+                }
+                isSyncingFeedback.value = true
+                fetch('/api/recommendation-state', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        variant: abVariant,
+                        user_genres: genres.value,
+                        user_rates: userRates.value,
+                        user_likes: userLikes.value,
+                        user_dislikes: userDislikes.value,
+                        user_not_interested: userNotInterested.value,
+                        feedback_event: feedbackEvent,
+                    }),
+                })
+                    .then((response) => {
+                        if (!response.ok) {
+                            throw new Error('state sync failed')
+                        }
+                        return response.json()
+                    })
+                    .then((state) => {
+                        recommendationData.value = state.recommendations || recommendationData.value
+                        likesSimilarsData.value = state.likes_similars || likesSimilarsData.value
+                        likesData.value = state.likes || likesData.value
+                        recommendationsMessage.value = state.recommendations_message || recommendationsMessage.value
+                        likesSimilarMessage.value = state.likes_similar_message || likesSimilarMessage.value
+                        recommendationExplanations.value = state.recommendation_explanations || recommendationExplanations.value
+                        preferenceDashboard.value = state.preference_dashboard || preferenceDashboard.value
+                        feedbackLoop.value = state.feedback_loop || feedbackLoop.value
+                        feedbackImpact.value = state.feedback_impact || feedbackImpact.value
+                        if (feedbackImpact.value && feedbackImpact.value.message) {
+                            setNotice(feedbackImpact.value.message)
+                        }
+                    })
+                    .catch(() => {
+                        setNotice('Unable to sync feedback state. Please refresh the page.')
+                    })
+                    .finally(() => {
+                        isSyncingFeedback.value = false
+                    })
+            }
+
+            function applyFeedback(movieId, feedbackType) {
+                const movieKey = movieId.toString()
+                pushHistory('Feedback: ' + feedbackType)
+
+                const alreadyLiked = userLikes.value.includes(movieKey)
+                const alreadyDisliked = userDislikes.value.includes(movieKey)
+                const alreadyNotInterested = userNotInterested.value.includes(movieKey)
+
+                removeFromBucket(userLikes.value, movieKey)
+                removeFromBucket(userDislikes.value, movieKey)
+                removeFromBucket(userNotInterested.value, movieKey)
+
+                if (feedbackType === 'like' && !alreadyLiked) {
+                    userLikes.value.push(movieKey)
+                }
+                if (feedbackType === 'dislike' && !alreadyDisliked) {
+                    userDislikes.value.push(movieKey)
+                }
+                if (feedbackType === 'not_interested' && !alreadyNotInterested) {
+                    userNotInterested.value.push(movieKey)
                 }
 
-                document.cookie = "user_likes=" + userLikes.value;
+                requiresRefresh.value = false
+                persistUserState()
+                syncRecommendationState({type: feedbackType, movieId: Number(movieId)})
 
-                reloadPage();
+                if (uiVariant !== 'v2') {
+                    reloadPage()
+                }
             }
+
+            // ==== Movie Feedback Operation ====
+            function updateLike(movieId) {
+                applyFeedback(movieId, 'like')
+            }
+
+            function updateDislike(movieId) {
+                applyFeedback(movieId, 'dislike')
+            }
+
+            function updateNotInterested(movieId) {
+                applyFeedback(movieId, 'not_interested')
+            }
+
             function inLikes(movieId) {
                 return userLikes.value.includes(movieId.toString())
             }
 
+            function inDislikes(movieId) {
+                return userDislikes.value.includes(movieId.toString())
+            }
+
+            function inNotInterested(movieId) {
+                return userNotInterested.value.includes(movieId.toString())
+            }
+
+            function movieScore(movieId) {
+                const movie = recommendationData.value.find((entry) => entry.movieId === movieId)
+                if (!movie) {
+                    return ''
+                }
+                if (typeof movie.final_score === 'number') {
+                    return movie.final_score.toFixed(3)
+                }
+                if (typeof movie.similarity === 'number') {
+                    return movie.similarity.toFixed(3)
+                }
+                return ''
+            }
+
+            function movieReasonTags(movieId) {
+                const explanation = recommendationExplanations.value[movieId.toString()]
+                if (explanation && Array.isArray(explanation.details) && explanation.details.length > 0) {
+                    return explanation.details.slice(0, 3)
+                }
+
+                const movie = recommendationData.value.find((entry) => entry.movieId === movieId)
+                if (!movie) {
+                    return []
+                }
+
+                const tags = []
+                if (typeof movie.final_score === 'number') {
+                    tags.push('Hybrid ranking')
+                    tags.push('Temporal rating fit')
+                }
+                if (typeof movie.similarity === 'number') {
+                    tags.push('Semantic proximity')
+                }
+                if (tags.length === 0) {
+                    tags.push('Preference match')
+                }
+                return tags
+            }
+
+            function openWhyModal(movieId) {
+                activeWhyMovieId.value = movieId.toString()
+                showWhyModal.value = true
+            }
+
+            function closeWhyModal() {
+                showWhyModal.value = false
+                activeWhyMovieId.value = ''
+            }
+
+            function scrollToSection(sectionId) {
+                const target = document.getElementById(sectionId)
+                if (target) {
+                    target.scrollIntoView({behavior: 'smooth', block: 'start'})
+                    return
+                }
+                setNotice('This section appears after recommendations are ready.')
+            }
+
+            function startRecommendationFlow() {
+                if (genres.value.length === 0) {
+                    showGenres.value = true
+                    return
+                }
+                if (userRates.value.length === 0) {
+                    showMovieRate.value = true
+                    return
+                }
+
+                const recommendationAnchor = document.getElementById('recommendation-anchor')
+                if (recommendationAnchor) {
+                    recommendationAnchor.scrollIntoView({behavior: 'smooth', block: 'start'})
+                    return
+                }
+                setNotice('Recommendations update automatically after rating and like actions.')
+            }
 
             function reloadPage() {
-                location.reload();
+                location.reload()
             }
 
             return {
@@ -388,10 +1081,56 @@
                 userRates,
                 getRate,
                 updateRate,
+                saveRatings,
+                openRatingModal,
 
                 userLikes,
+                userDislikes,
+                userNotInterested,
                 updateLike,
+                updateDislike,
+                updateNotInterested,
                 inLikes,
+                inDislikes,
+                inNotInterested,
+                movieScore,
+                movieReasonTags,
+                openWhyModal,
+                closeWhyModal,
+                scrollToSection,
+                showWhyModal,
+                activeWhyExplanation,
+
+                recommendationData,
+                likesSimilarsData,
+                likesData,
+                recommendationsMessage,
+                likesSimilarMessage,
+                recommendationExplanations,
+                preferenceDashboard,
+                feedbackLoop,
+                feedbackImpact,
+                dashboardSummary,
+                dashboardGenres,
+                dashboardSuppressedGenres,
+                dashboardPreferredPeople,
+                isSyncingFeedback,
+
+                stepOneDone,
+                stepTwoDone,
+                stepThreeDone,
+                completedStepCount,
+                stepProgressPercent,
+                recommendationReady,
+                selectedGenreLabels,
+                canUndo,
+                undoLastOperation,
+                actionNotice,
+                requiresRefresh,
+                isControlPanelOpen,
+                toggleControlPanel,
+                closeControlPanel,
+                startRecommendationFlow,
 
                 reloadPage,
             }
@@ -404,10 +1143,460 @@
 
 </script>
 <style>
+    :root {
+        --v2-bg: #1a1f28;
+        --v2-surface: #242c38;
+        --v2-surface-strong: #2e3948;
+        --v2-border: #8fa7b5;
+        --v2-border-soft: #4a5868;
+        --v2-text: #e6e8ea;
+        --v2-muted: #b2b7bf;
+        --v2-accent: #93a784;
+        --v2-hot: #a3786a;
+        --v2-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+        --v2-ring: 0 0 0 1px rgba(143, 167, 181, 0.32);
+    }
+
+    .v2-shell {
+        background:
+            radial-gradient(circle at 18% 10%, rgba(163, 120, 106, 0.14), transparent 32%),
+            radial-gradient(circle at 84% 4%, rgba(154, 179, 192, 0.12), transparent 34%),
+            var(--v2-bg);
+        color: var(--v2-text);
+    }
+
+    .v2-panel {
+        position: relative;
+        border: 1px solid var(--v2-border-soft);
+        border-radius: 16px;
+        background: linear-gradient(165deg, rgba(23, 33, 65, 0.95), rgba(17, 22, 44, 0.96));
+        box-shadow: var(--v2-shadow), var(--v2-ring);
+    }
+
+    .v2-hero {
+        padding: 1.35rem;
+        overflow: hidden;
+    }
+
+    .v2-overline {
+        margin: 0 0 0.35rem;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 0.78rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--v2-muted);
+    }
+
+    .v2-title {
+        margin: 0;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: clamp(1.55rem, 4vw, 2.7rem);
+        line-height: 1.08;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: #f5fbff;
+    }
+
+    .v2-copy {
+        margin-top: 0.65rem;
+        color: var(--v2-muted);
+        font-size: 0.95rem;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .v2-progress {
+        margin-top: 0.9rem;
+        width: 100%;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(25, 31, 39, 0.95);
+        border: 1px solid rgba(143, 167, 181, 0.4);
+        overflow: hidden;
+    }
+
+    .v2-progress-bar {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #a3786a, #9ab3c0, #93a784);
+        box-shadow: 0 0 12px rgba(154, 179, 192, 0.38);
+        transition: width 220ms ease;
+    }
+
+    .v2-stepper {
+        display: grid;
+        gap: 0.75rem;
+        margin-top: 0.95rem;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .v2-step-card {
+        border-radius: 12px;
+        border: 1px solid var(--v2-border-soft);
+        background: rgba(10, 16, 31, 0.85);
+        padding: 0.8rem;
+        transition: transform 160ms ease, border-color 160ms ease;
+    }
+
+    .v2-step-card.is-complete {
+        border-color: var(--v2-accent);
+        box-shadow: 0 0 0 1px rgba(147, 167, 132, 0.35), inset 0 0 20px rgba(147, 167, 132, 0.12);
+    }
+
+    .v2-step-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--v2-border);
+    }
+
+    .v2-step-index {
+        margin: 0;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 0.72rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--v2-muted);
+    }
+
+    .v2-step-title {
+        margin: 0.25rem 0 0;
+        font-family: 'Rajdhani', sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #ecf8ff;
+    }
+
+    .v2-step-meta {
+        margin: 0.25rem 0 0;
+        color: #94c5d8;
+        font-size: 0.86rem;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .v2-chip {
+        border-radius: 999px;
+        border: 1px solid rgba(143, 167, 181, 0.55);
+        background: rgba(10, 18, 34, 0.92);
+        color: var(--v2-text);
+        padding: 0.22rem 0.62rem;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 0.82rem;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .v2-notice {
+        margin-top: 0.85rem;
+        border-radius: 10px;
+        border: 1px solid rgba(163, 120, 106, 0.5);
+        background: rgba(163, 120, 106, 0.12);
+        color: #f2dfd8;
+        padding: 0.62rem 0.75rem;
+        font-size: 0.86rem;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .v2-nav-actions {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 0.58rem;
+    }
+
+    .v2-nav-actions .button,
+    .v2-nav-actions .tag {
+        margin: 0;
+    }
+
+    .v2-nav-pill {
+        min-height: 2rem;
+        padding-left: 0.82rem;
+        padding-right: 0.82rem;
+        border-radius: 10px;
+        letter-spacing: 0.08em;
+    }
+
+    .v2-nav-pill strong {
+        font-weight: 700;
+    }
+
+    .v2-btn {
+        border-radius: 10px;
+        border: 1px solid rgba(143, 167, 181, 0.45);
+        background: rgba(13, 21, 42, 0.95);
+        color: var(--v2-text);
+        font-family: 'Rajdhani', sans-serif;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        transition: all 160ms ease;
+    }
+
+    .v2-btn:hover {
+        border-color: var(--v2-border);
+        color: #1a1f28;
+        background: #9ab3c0;
+    }
+
+    .v2-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .v2-btn--primary {
+        border-color: rgba(147, 167, 132, 0.75);
+        background: linear-gradient(135deg, rgba(147, 167, 132, 0.9), rgba(154, 179, 192, 0.9));
+        color: #162028;
+        font-weight: 700;
+    }
+
+    .v2-btn--primary:hover {
+        background: linear-gradient(135deg, #9eb091, #a7bbc7);
+        color: #161d25;
+    }
+
+    .v2-btn--accent {
+        border-color: rgba(163, 120, 106, 0.6);
+        background: rgba(163, 120, 106, 0.14);
+        color: #f2dfd8;
+    }
+
+    .v2-btn--accent:hover {
+        border-color: rgba(163, 120, 106, 0.9);
+        background: rgba(163, 120, 106, 0.9);
+        color: #2a1710;
+    }
+
+    .v2-btn--danger {
+        border-color: rgba(163, 120, 106, 0.6);
+        background: rgba(78, 55, 49, 0.84);
+        color: #f0e0da;
+    }
+
+    .v2-btn--danger:hover {
+        border-color: rgba(163, 120, 106, 0.95);
+        background: rgba(163, 120, 106, 0.95);
+        color: #22120d;
+    }
+
+    .v2-control-center {
+        position: fixed;
+        top: 0;
+        right: 0;
+        z-index: 60;
+        width: min(22rem, 92vw);
+        height: 100dvh;
+        border-radius: 14px 0 0 14px;
+        border: 1px solid var(--v2-border-soft);
+        background: linear-gradient(160deg, rgba(22, 30, 57, 0.97), rgba(12, 18, 34, 0.97));
+        box-shadow: var(--v2-shadow), var(--v2-ring);
+        padding: 0.9rem;
+        transform: translateX(110%);
+        transition: transform 220ms ease;
+        overflow-y: auto;
+    }
+
+    .v2-control-center.is-open {
+        transform: translateX(0);
+    }
+
+    .v2-control-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 55;
+        background: rgba(2, 6, 16, 0.55);
+        backdrop-filter: blur(2px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 180ms ease;
+    }
+
+    .v2-control-backdrop.is-active {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .v2-control-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.6rem;
+        margin-bottom: 0.45rem;
+    }
+
+    .v2-control-summary {
+        border: 1px solid rgba(143, 167, 181, 0.38);
+        border-radius: 10px;
+        background: rgba(10, 18, 34, 0.68);
+        padding: 0.55rem 0.65rem;
+        margin-bottom: 0.65rem;
+    }
+
+    .v2-control-summary-title {
+        margin: 0;
+        color: #e8f9ff;
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 0.92rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .v2-control-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.32rem;
+    }
+
+    .v2-panel-close {
+        width: 2.15rem;
+        min-width: 2.15rem;
+        height: 2.15rem;
+        padding: 0;
+    }
+
+    .v2-control-grid {
+        display: grid;
+        gap: 0.45rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .v2-kpi {
+        border: 1px dashed rgba(52, 216, 255, 0.35);
+        border-radius: 8px;
+        background: rgba(7, 14, 27, 0.85);
+        padding: 0.42rem 0.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.18rem;
+    }
+
+    .v2-kpi span {
+        color: var(--v2-muted);
+        font-size: 0.73rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .v2-kpi strong {
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 1.05rem;
+        color: #e8f9ff;
+    }
+
+    .v2-feedback-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.32rem;
+        width: 100%;
+    }
+
+    .v2-feedback-btn {
+        border: 1px solid rgba(143, 167, 181, 0.35);
+        background: rgba(9, 15, 29, 0.88);
+        color: var(--v2-text);
+        font-family: 'Rajdhani', sans-serif;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+
+    .v2-feedback-btn:hover {
+        border-color: var(--v2-border);
+        background: rgba(22, 35, 56, 0.95);
+    }
+
+    .v2-reason-chip {
+        display: inline-flex;
+        align-items: center;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        line-height: 1.25;
+    }
+
+    .card .media-content {
+        min-width: 0;
+    }
+
+    .v2-title-safe {
+        max-width: 100%;
+        overflow: hidden;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+    }
+
+    .v2-wrap-text {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .v2-dashboard-grid {
+        display: grid;
+        gap: 0.8rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .v2-bar-row {
+        display: grid;
+        grid-template-columns: 90px 1fr 46px;
+        gap: 0.48rem;
+        align-items: center;
+        margin-bottom: 0.42rem;
+        font-size: 0.8rem;
+    }
+
+    .v2-bar-track {
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(10, 20, 36, 0.9);
+        border: 1px solid rgba(143, 167, 181, 0.35);
+        overflow: hidden;
+    }
+
+    .v2-bar-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, rgba(147, 167, 132, 0.95), rgba(154, 179, 192, 0.95));
+    }
+
+    .v2-chip-stack {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+    }
+
+    .v2-chip--danger {
+        border-color: rgba(176, 122, 109, 0.7);
+        color: #f3ddd6;
+        background: rgba(176, 122, 109, 0.14);
+    }
+
+    .v2-loop-grid {
+        display: grid;
+        gap: 0.6rem;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .v2-loop-step {
+        border-radius: 10px;
+        border: 1px solid rgba(143, 167, 181, 0.35);
+        background: rgba(9, 16, 30, 0.86);
+        padding: 0.7rem;
+    }
+
     .modal-content, .modal-card {
         width: calc(100% - 4em);
+    }
 
-        @media screen and (min-width: 1022px) {
+    @media screen and (min-width: 1022px) {
+        .modal-content, .modal-card {
             width: 1022px;
         }
     }
@@ -432,6 +1621,29 @@
 
     .star {
         cursor: pointer;
+    }
+
+    @media screen and (max-width: 1023px) {
+        .v2-control-center {
+            width: min(24rem, 100vw);
+            border-radius: 0;
+        }
+    }
+
+    @media screen and (max-width: 768px) {
+        .v2-stepper {
+            grid-template-columns: 1fr;
+        }
+
+        .v2-dashboard-grid,
+        .v2-loop-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .v2-bar-row {
+            grid-template-columns: 1fr;
+            gap: 0.25rem;
+        }
     }
 </style>
 </body>
