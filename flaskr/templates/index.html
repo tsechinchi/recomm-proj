@@ -40,9 +40,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
-        .cyber-glitch:hover {
-            text-shadow: 1px 0 rgba(163, 120, 106, 0.65), -1px 0 rgba(154, 179, 192, 0.65);
-        }
+    .cyber-glitch:hover {
+        text-shadow: 1px 0 rgba(163, 120, 106, 0.65), -1px 0 rgba(154, 179, 192, 0.65);
+    }
+
     </style>
 </head>
 <body class="{% if ui_variant == 'v2' %}bg-cyberBlack font-body text-neonCyan v2-shell{% endif %}">
@@ -252,9 +253,6 @@
                                             {% if ui_variant == 'v2' %}
                                             <div class="border-t border-dotted border-gray-700 pt-2 mt-2">
                                                 <p class="font-display text-xs tracking-[0.2em] font-bold text-neonGreen" v-if="movieScore(movie.movieId)">MATCH: [[ (movieScore(movie.movieId) * 100).toFixed(1) ]]%</p>
-                                                <div class="mt-2 flex flex-wrap gap-1" v-if="movieReasonTags(movie.movieId).length > 0">
-                                                    <span class="v2-reason-chip border border-gray-800 bg-[rgba(163,120,106,0.12)] px-2 py-[2px] font-display text-[9px] uppercase tracking-[0.1em] text-neonPink" v-for="reason in movieReasonTags(movie.movieId)" :key="movie.movieId + '-' + reason">[[ reason ]]</span>
-                                                </div>
                                             </div>
                                             {% endif %}
                                         </div>
@@ -266,15 +264,17 @@
                                         <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateLike(movie.movieId)">
                                             <span :class="['fa fa-thumbs-up', inLikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonCyan{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}LIKE{% else %}Like{% endif %}</span>
                                         </button>
+                                        {% if ui_variant == 'v2' %}
                                         <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateDislike(movie.movieId)">
                                             <span :class="['fa fa-thumbs-down', inDislikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}DISLIKE{% else %}Dislike{% endif %}</span>
                                         </button>
                                         <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateNotInterested(movie.movieId)">
-                                            <span :class="['fa fa-ban', inNotInterested(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}NOT INTERESTED{% else %}Skip{% endif %}</span>
+                                            <span :class="['fa fa-ban', inNotInterested(movie.movieId) ? 'text-neonPink' : '']"> NOT INTERESTED</span>
                                         </button>
                                         <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="openWhyModal(movie.movieId)">
-                                            <span class="fa fa-question-circle"> {% if ui_variant == 'v2' %}WHY THIS?{% else %}Why?{% endif %}</span>
+                                            <span class="fa fa-question-circle"> WHY THIS?</span>
                                         </button>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -314,12 +314,14 @@
                                         <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateLike(movie.movieId)">
                                             <span :class="['fa fa-thumbs-up', inLikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonGreen{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}LIKE{% else %}Like{% endif %}</span>
                                         </button>
+                                        {% if ui_variant == 'v2' %}
                                         <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateDislike(movie.movieId)">
                                             <span :class="['fa fa-thumbs-down', inDislikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}DISLIKE{% else %}Dislike{% endif %}</span>
                                         </button>
                                         <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateNotInterested(movie.movieId)">
-                                            <span :class="['fa fa-ban', inNotInterested(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}NOT INTERESTED{% else %}Skip{% endif %}</span>
+                                            <span :class="['fa fa-ban', inNotInterested(movie.movieId) ? 'text-neonPink' : '']"> NOT INTERESTED</span>
                                         </button>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -358,12 +360,14 @@
                                         <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateLike(movie.movieId)">
                                             <span :class="['fa fa-thumbs-up', inLikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonGreen{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}LIKE{% else %}Like{% endif %}</span>
                                         </button>
+                                        {% if ui_variant == 'v2' %}
                                         <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateDislike(movie.movieId)">
                                             <span :class="['fa fa-thumbs-down', inDislikes(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}DISLIKE{% else %}Dislike{% endif %}</span>
                                         </button>
                                         <button class="button is-small {% if ui_variant == 'v2' %}v2-feedback-btn{% endif %}" @click="updateNotInterested(movie.movieId)">
-                                            <span :class="['fa fa-ban', inNotInterested(movie.movieId) ? '{% if ui_variant == 'v2' %}text-neonPink{% else %}checked{% endif %}' : '']"> {% if ui_variant == 'v2' %}NOT INTERESTED{% else %}Skip{% endif %}</span>
+                                            <span :class="['fa fa-ban', inNotInterested(movie.movieId) ? 'text-neonPink' : '']"> NOT INTERESTED</span>
                                         </button>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
@@ -1163,6 +1167,7 @@
             radial-gradient(circle at 84% 4%, rgba(154, 179, 192, 0.12), transparent 34%),
             var(--v2-bg);
         color: var(--v2-text);
+        overflow-x: hidden;
     }
 
     .v2-panel {
@@ -1514,6 +1519,13 @@
         overflow-wrap: anywhere;
         word-break: break-word;
         line-height: 1.25;
+    }
+
+    .v2-shell .container {
+        width: 100%;
+        max-width: none;
+        padding-left: 0;
+        padding-right: 0;
     }
 
     .card .media-content {

@@ -25,6 +25,8 @@ bp = Blueprint('main', __name__, url_prefix='/')
 
 _MOVIE_EMBEDDING_CACHE = None
 _MOVIE_TIME_CACHE = None
+COLLABORATIVE_WEIGHT = 0.65
+SEMANTIC_WEIGHT = 0.25
 
 ACTOR_COLUMNS = ('actors', 'actor', 'cast', 'casts', 'starring')
 DIRECTOR_COLUMNS = ('director', 'directors', 'filmmaker', 'crew')
@@ -609,6 +611,7 @@ def _build_recommendation_state(
 def index():
     participant_id = request.args.get('participant_id', '').strip()
     variant = _get_ab_variant()
+    ui_variant = _get_ui_variant()
     if variant is None:
         return render_template_string(
             """
@@ -678,8 +681,6 @@ def index():
                                              likes=state['likes'],
                                              ab_variant=variant,
                                              participant_id=participant_id,
-<<<<<<< HEAD
-=======
                                              collaborative_weight=COLLABORATIVE_WEIGHT,
                                              semantic_weight=SEMANTIC_WEIGHT,
                                              feedback_state=state['feedback_state'],
@@ -687,7 +688,7 @@ def index():
                                              preference_dashboard=state['preference_dashboard'],
                                              feedback_loop=state['feedback_loop'],
                                              feedback_impact=state['feedback_impact'],
->>>>>>> ui
+                                             ui_variant=ui_variant,
                                              ))
     _log_ab_event(
         participant_id,
@@ -741,8 +742,6 @@ def _get_ab_variant():
     return None
 
 
-<<<<<<< HEAD
-=======
 def _get_ui_variant():
     requested_ui = request.args.get('ui', 'classic').strip().lower()
     if requested_ui in {'classic', 'v2'}:
@@ -757,8 +756,6 @@ def _parse_cookie_list(cookie_name):
     decoded_value = unquote(raw_value)
     return [item for item in decoded_value.split(',') if item]
 
-
->>>>>>> ui
 def _ab_log_path():
     log_dir = Path(current_app.root_path).parent / 'ab_test_logs'
     log_dir.mkdir(parents=True, exist_ok=True)
