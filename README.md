@@ -36,9 +36,14 @@ source .venv/bin/activate  # On macOS/Linux
 # or
 .venv\Scripts\activate  # On Windows 
 
-```
 uv run flask --app flaskr run --debug # if you use non uv, remove uv run
-```
+
+
+## Running evaluation
+uv run tests/evaluate_original.py
+uv run tests/evaluate_hybrid.py
+uv run tests/compare_algorithms.py
+
 
 ## Add the recommendation algorithm
 You only need to modify the `main.py` file. Its path is as follows:
