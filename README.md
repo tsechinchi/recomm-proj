@@ -39,10 +39,11 @@ source .venv/bin/activate  # On macOS/Linux
 uv run flask --app flaskr run --debug # if you use non uv, remove uv run
 
 
-## Running evaluation
+## Running evaluation on single algorithm
 uv run tests/evaluate_original.py
 uv run tests/evaluate_hybrid.py
-uv run tests/compare_algorithms.py
+## Run evaluation on both 
+uv run tests/paired_ttest.py
 
 
 ## Add the recommendation algorithm
