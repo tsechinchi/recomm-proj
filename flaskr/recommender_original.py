@@ -99,7 +99,7 @@ def getRecommendationBy(user_rates):
         # Convert the user's ratings (stored in "user_rates") to the Dataset format
         user_rates = ratesFromUser(user_rates)
         # Add the user’s rating information into the Movielens dataset
-        training_rates = pd.concat([rates, user_rates], ignore_index=True)
+        training_rates = pd.concat([rates[['userId', 'movieId', 'rating']], user_rates], ignore_index=True)
         # Load the combined data as a training dataset 
         training_data = Dataset.load_from_df(training_rates, reader=reader)
         # Build a full training set from the dataset
