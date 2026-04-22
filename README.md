@@ -14,36 +14,9 @@ conda install -c conda-forge scikit-surprise
 pip install -r requirements.txt
 
 ```
-## alternative -uv
-## Install uv
+open anaconda cmd --> run conda init --> open vscode --> cd recomm_proj --> run conda activities comprs_demo
 
-First, install uv (a fast Python package manager):
-
-```bash
-# On macOS/Linux with brew
-brew install uv
-
-# Or install via pip
-pip install uv
-
-# Or download from https://github.com/astral-sh/uv
-## Run the project
-# Sync dependencies from pyproject.toml
-uv sync
-
-# Activate the virtual environment
-source .venv/bin/activate  # On macOS/Linux
-# or
-.venv\Scripts\activate  # On Windows 
-
-uv run flask --app flaskr run --debug # if you use non uv, remove uv run
-
-
-## Running evaluation on single algorithm
-uv run tests/evaluate_original.py
-uv run tests/evaluate_hybrid.py
-## Run evaluation on both 
-uv run tests/paired_ttest.py
+python -m flask --app flaskr run --debug
 
 
 ## Add the recommendation algorithm
